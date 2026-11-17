@@ -168,6 +168,8 @@ The public interface, which the version numbers promise to keep, is:
 - the minimum system, macOS 27 on Apple silicon;
 - the documented behaviour that the app never uses the network.
 
+Privacy: Gullfire collects and sends nothing. See PRIVACY.md.
+
 ## How to help
 
 If you have a game controller, telling us whether it works would help more than anything else. Please open an issue with the controller's name and what happened. We don't take pull requests, so an issue is the way in. We'd rather know.
