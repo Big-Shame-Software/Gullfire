@@ -1,0 +1,13 @@
+.DS_Store
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+.build/
+.swiftpm/
+*.profraw
+Cities/
+Cities
+renders/
+__pycache__/
+Models/

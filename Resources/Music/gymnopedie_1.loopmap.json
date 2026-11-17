@@ -1,0 +1,111 @@
+{
+  "analyzer" : 2,
+  "approved" : [
+
+  ],
+  "fingerprint" : "f0647c53fd4afe81",
+  "format" : "bss-midiloop\/1",
+  "rejected" : [
+
+  ],
+  "segments" : [
+    {
+      "endBar" : 18,
+      "endTick" : 20736,
+      "index" : 0,
+      "startBar" : 0,
+      "startTick" : 0
+    },
+    {
+      "endBar" : 22,
+      "endTick" : 25344,
+      "index" : 1,
+      "startBar" : 18,
+      "startTick" : 20736
+    },
+    {
+      "endBar" : 31,
+      "endTick" : 35712,
+      "index" : 2,
+      "startBar" : 22,
+      "startTick" : 25344
+    },
+    {
+      "endBar" : 40,
+      "endTick" : 46080,
+      "index" : 3,
+      "startBar" : 31,
+      "startTick" : 35712
+    },
+    {
+      "endBar" : 47,
+      "endTick" : 54144,
+      "index" : 4,
+      "startBar" : 40,
+      "startTick" : 46080
+    }
+  ],
+  "style" : "balanced",
+  "transitions" : [
+    {
+      "from" : 0,
+      "kind" : "bridge",
+      "score" : 0.5376,
+      "to" : 4
+    },
+    {
+      "from" : 0,
+      "kind" : "bridge",
+      "score" : 0.5043,
+      "to" : 2
+    },
+    {
+      "from" : 1,
+      "kind" : "compatible",
+      "score" : 0.6197,
+      "to" : 0
+    },
+    {
+      "from" : 1,
+      "kind" : "bridge",
+      "score" : 0.4533,
+      "to" : 4
+    },
+    {
+      "from" : 2,
+      "kind" : "bridge",
+      "score" : 0.5626,
+      "to" : 0
+    },
+    {
+      "from" : 2,
+      "kind" : "bridge",
+      "score" : 0.3929,
+      "to" : 1
+    },
+    {
+      "from" : 3,
+      "kind" : "bridge",
+      "score" : 0.5376,
+      "to" : 1
+    },
+    {
+      "from" : 3,
+      "kind" : "bridge",
+      "score" : 0.4533,
+      "to" : 2
+    },
+    {
+      "from" : 4,
+      "kind" : "compatible",
+      "score" : 0.706,
+      "to" : 3
+    },
+    {
+      "from" : 4,
+      "kind" : "bridge",
+      "score" : 0.5319,
+      "to" : 2
+    }
+  ]
+}
