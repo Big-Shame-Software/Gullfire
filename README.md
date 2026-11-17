@@ -168,7 +168,9 @@ The public interface, which the version numbers promise to keep, is:
 - the minimum system, macOS 27 on Apple silicon;
 - the documented behaviour that the app never uses the network.
 
-Privacy: Gullfire collects and sends nothing. See PRIVACY.md.
+## Privacy
+
+Gullfire collects and sends nothing. See [PRIVACY.md](PRIVACY.md).
 
 ## How to help
 
