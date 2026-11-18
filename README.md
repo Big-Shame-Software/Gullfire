@@ -29,6 +29,7 @@ In 1981 a movie imagined what a navigation computer would show a pilot coming in
 - There is no map picker. Gullfire opens the one city it finds.
 - The glider is not included. Add your own model file to show it (see Adding a glider).
 - The game controller is supported, but it has not been tested on real hardware.
+- Mouse flight works with a mouse. It does not work with a trackpad yet.
 - The River route can drop to about 33 frames a second for a few seconds during a long full-screen flight. The cause is not known yet.
 - In full-screen 5K runs, memory use moves between about 630 MB and 930 MB. The cause is not known yet.
 - Something outside the app can briefly hide its window during a run. We have seen it, and have not found the cause.
@@ -51,6 +52,8 @@ Start the app and it flies the Scenic route on autopilot. The list of routes app
 | Shift / Control | Throttle up / down |
 | Space | Cruise or manual (manual to cruise blends over 3 seconds) |
 | R | Level off |
+| T / V | Height up / down |
+| J | Mouse flight on or off |
 | C | Next route, and show the list of routes at the bottom of the window |
 | B | Cycle the colour scheme (Default, Brand, Lime) |
 | P | Show or hide the performance overlay |
@@ -65,6 +68,12 @@ Start the app and it flies the Scenic route on autopilot. The list of routes app
 Every key also has a menu item in the Flight, Music and View menus. Music plays from a folder you choose in Settings (Gullfire > Settings), in a random order with a crossfade (5 seconds unless you change it), and starts when you press M: the app is silent at launch. It pauses while the window is hidden; a Settings switch turns that off. Settings also has a cathedral button (a building icon, no text). It looks for a track of about 3 minutes 33 seconds in your music folder and your Music library, and offers the one it finds with a fade slider. Playing it loops that one track with the fade, which starts at the longest the track allows. "Back to My Music Folder" returns to the shuffle. A connected game controller uses the left stick, triggers and shoulder buttons.
 
 With no music folder or file set, M plays the demo piece, Erik Satie's *Gymnopédie No. 1*, endlessly. Settings also offers the piece endless or as a loop, or a MIDI file you choose. The sound is our own synthesized pad and reverb, with no samples and no recordings.
+
+### Flight height and mouse flight
+
+T and V raise and lower the autopilot's flight height in 10 m steps, from 60 m below to 120 m above the route's own height. The HUD shows it as HEIGHT +30 M, or HEIGHT 0 M at the route's own height. On a street run the height can only go up from the route's own height. On open routes it can go down, but never below the roofs plus 30 m. The height resets to 0 when you change route with C. It applies to cruise; the climb-out after Space ignores it.
+
+J turns mouse flight on and off. Moving the mouse right banks right, and moving it forward, away from you, puts the nose down. The scroll wheel changes throttle. The stick eases back to centre slowly when the mouse stops. Turning mouse flight on switches to manual flight. The pointer is hidden and held while it is on. Esc always gives it back, and so does switching to another window or app. The HUD says MOUSE ON / ESC TO RELEASE, or a small notice does when the HUD is off. Settings (View tab) has Mouse flight sensitivity and Invert pitch.
 
 ### About and the credit line
 

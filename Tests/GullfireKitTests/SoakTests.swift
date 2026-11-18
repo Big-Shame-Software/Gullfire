@@ -12,6 +12,10 @@ enum SoakSetting {
     static var minutes: Double? {
         ProcessInfo.processInfo.environment["GULLFIRE_SOAK_MINUTES"].flatMap(Double.init)
     }
+    /// GULLFIRE_SOAK_HEIGHT: the flight-height offset in metres the soak flies at (default 0).
+    static var height: Double {
+        ProcessInfo.processInfo.environment["GULLFIRE_SOAK_HEIGHT"].flatMap(Double.init) ?? 0
+    }
     /// Memory is flat when the end resident size is within this many MB of the 30-minute size.
     static let flatThresholdMB = 5.0
 }
@@ -55,7 +59,8 @@ struct RouteSoak {
         var samples: [(minute: Double, mb: Double)] = [(0, Self.residentMB())]
         for k in 1...steps {
             sim.advance(by: t.fixedStep, obstacles: city, extent: extent) { s, _ in
-                let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t)
+                let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t,
+                                          heightOffset: SoakSetting.height, obstacles: SoakSetting.height == 0 ? nil : city)
                 // The route index wraps from its end back to its start: one lap.
                 if let h = hint, r.index < h - route.count / 2 { laps += 1 }
                 hint = r.index

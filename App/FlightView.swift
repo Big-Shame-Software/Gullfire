@@ -12,6 +12,8 @@ struct FlightView: View {
             MetalView(model: model)
             if model.showHUD {
                 HUDView(model: model)
+            } else if model.mouseFlight {
+                MouseNoticeView(model: model)
             }
             if model.showKeys {
                 KeyLegendView(model: model)

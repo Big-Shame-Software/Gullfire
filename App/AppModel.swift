@@ -18,6 +18,8 @@ struct HUDReadout: Equatable {
     var boundaryWarning = false
     /// True while the autopilot has the aircraft (not during the hand-over blend). The key legend uses it.
     var cruising = false
+    /// The autopilot's height above the route, in metres (T and V). Zero is the route itself.
+    var heightOffsetM = 0.0
 }
 
 /// Live performance numbers for the overlay.
@@ -69,6 +71,18 @@ final class AppModel {
     /// The key command legend (K). On by default; the choice is kept.
     var showKeys: Bool = true {
         didSet { Self.defaults.set(showKeys, forKey: Self.showKeysKey) }
+    }
+    private static let mouseSensitivityKey = "mouseSensitivity"
+    private static let mouseInvertKey = "mouseInvert"
+    /// Mouse flight (J) is on. Not saved: the app never starts with the mouse taken.
+    var mouseFlight = false
+    /// Stick travel per point of pointer movement, 0.25 to 4 (1 is the default). Saved.
+    var mouseSensitivity: Double = 1.0 {
+        didSet { Self.defaults.set(mouseSensitivity, forKey: Self.mouseSensitivityKey) }
+    }
+    /// Pitch inverted for the mouse, as on a joystick. Saved.
+    var mouseInvert: Bool = false {
+        didSet { Self.defaults.set(mouseInvert, forKey: Self.mouseInvertKey) }
     }
     /// The renderer, so menu items and keys can reach the flight (set when the view starts).
     weak var flight: FlightRenderer?
@@ -174,6 +188,10 @@ final class AppModel {
         if Self.defaults.object(forKey: Self.showKeysKey) != nil {
             showKeys = Self.defaults.bool(forKey: Self.showKeysKey)
         }
+        if Self.defaults.object(forKey: Self.mouseSensitivityKey) != nil {
+            mouseSensitivity = min(4, max(0.25, Self.defaults.double(forKey: Self.mouseSensitivityKey)))
+        }
+        mouseInvert = Self.defaults.bool(forKey: Self.mouseInvertKey)
         do {
             city = try CityPackage.open(directory: Self.cityDirectory())
             timing.mark("city package opened")

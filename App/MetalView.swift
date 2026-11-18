@@ -30,6 +30,8 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     private var routeKeys: [String] = []
     private var pilot: Pilot
     private var autopilotHint: Int?
+    /// The height the autopilot flies above (or below) the route, in metres: T raises it, V lowers it. Reset on a route change.
+    private var heightOffset: Double = 0
     /// A hand-back below the roofs in progress (nil otherwise).
     private var handBack: HandBack?
     private var lastSimTime: Double?
@@ -139,6 +141,11 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         simulation.levelOff()
     }
 
+    /// J turning the mouse on: hand flying, so leave cruise (the autopilot ignores the mouse).
+    func handFly() {
+        if pilot.mode == .auto { toggleCruise() }
+    }
+
     /// Space: toggle cruise and manual. Manual to cruise blends over 3 s.
     func toggleCruise() {
         guard !routes.isEmpty else { return }
@@ -154,7 +161,13 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         guard routes.count > 1 else { return }
         routeIndex = (routeIndex + 1) % routes.count
         autopilotHint = nil
+        heightOffset = 0
         showRouteList()
+    }
+
+    /// T and V: the autopilot's height above the route, in steps of 10 m, between -60 and +120 m.
+    func stepHeight(_ delta: Double) {
+        heightOffset = min(max(heightOffset + delta, -60), 120)
     }
 
     /// The route list (D1): every route with its loop length, shown for 4 s after the press, and announced to VoiceOver.
@@ -279,7 +292,8 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
                 autopilotHint = r.index
                 return r.control
             }
-            let auto = Autopilot.control(for: s, route: route, hint: autopilotHint, tuning: tuning)
+            let auto = Autopilot.control(for: s, route: route, hint: autopilotHint, tuning: tuning,
+                                         heightOffset: heightOffset, obstacles: city)
             autopilotHint = auto.index
             return pilot.blended(manual: manual, auto: auto.control)
         }
@@ -342,7 +356,8 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
                                    latitude: geo.lat, longitude: geo.lon,
                                    proximityWarning: simulation.proximityWarning,
                                    boundaryWarning: simulation.boundaryWarning,
-                                   cruising: pilot.mode == .auto && pilot.blend >= 1)
+                                   cruising: pilot.mode == .auto && pilot.blend >= 1,
+                                   heightOffsetM: heightOffset)
             windowStart = now
             windowFrames = 0
             windowWorst = 0
@@ -380,12 +395,14 @@ struct MetalView: NSViewRepresentable {
         view.setAccessibilityElement(true)
         view.setAccessibilityLabel("Flight view")
         let input = FlightInput()
+        input.model = model
         context.coordinator.input = input
         view.input = input
+        view.model = model
         view.onWindowChange = { [coordinator = context.coordinator, weak view] in
             if let view { self.attach(view, coordinator: coordinator) }
         }
-        view.onAction = { [weak model] key in
+        view.onAction = { [weak model, weak view] key in
             MainActor.assumeIsolated {
                 guard let model else { return }
                 switch key {
@@ -399,10 +416,15 @@ struct MetalView: NSViewRepresentable {
                     NSApplication.shared.keyWindow?.toggleFullScreen(nil)
                 case "r": model.flight?.levelOff()
                 case "c": model.flight?.cycleRoute()
+                case "t": model.flight?.stepHeight(10)
+                case "v": model.flight?.stepHeight(-10)
                 case "space": model.flight?.toggleCruise()
                 case "n": model.nextTrack()
                 case "m": model.toggleMusic()
                 case ",": model.togglePause()
+                case "j":
+                    if view?.input?.mouseOn == false { model.flight?.handFly() }
+                    view?.toggleMouse()
                 default: break
                 }
             }
@@ -431,6 +453,11 @@ struct MetalView: NSViewRepresentable {
 
     func updateNSView(_ view: FlightMTKView, context: Context) {
         attach(view, coordinator: context.coordinator)
+    }
+
+    /// The flight view is being torn down: the mouse must not stay taken.
+    static func dismantleNSView(_ view: FlightMTKView, coordinator: Coordinator) {
+        view.releaseMouse()
     }
 
     /// Installs the occlusion pause once the view has a window. Called from the view's

@@ -9,8 +9,27 @@ public enum Autopilot {
     /// Lookahead: max(80 m, 2.5 s of travel).
     public static func lookahead(speed: Double) -> Double { max(80, 2.5 * speed) }
 
+    /// The altitude to fly over a route sample, given the route's altitude there, the pilot's height offset (metres,
+    /// + higher, − lower) and the tallest roof within 30 m of the sample.
+    ///
+    /// A street sample (the route is less than 30 m above the roof) takes the offset only upward, so the aircraft never
+    /// drops below the route there. An open sample may go down with the offset, but never under the roof plus 30 m.
+    public static func targetAltitude(routeAltitude: Double, offset: Double, roofAhead: Double) -> Double {
+        // Raising never needs a roof check: the route plus the offset is always above the route.
+        if offset >= 0 { return routeAltitude + offset }
+        let street = routeAltitude - roofAhead < 30
+        if street {
+            return routeAltitude + max(offset, 0)
+        }
+        return max(routeAltitude + offset, roofAhead + 30)
+    }
+
     /// The control for this step, and the route index it used.
-    public static func control(for s: FlightState, route: Route, hint: Int?, tuning t: FlightTuning) -> (control: ControlInput, index: Int) {
+    ///
+    /// `heightOffset` raises (+) or lowers (−) the flight height over the route, subject to `targetAltitude`. Without
+    /// `obstacles` every sample reads as a street, so the offset can only raise the aircraft.
+    public static func control(for s: FlightState, route: Route, hint: Int?, tuning t: FlightTuning,
+                               heightOffset: Double = 0, obstacles: ObstacleSource? = nil) -> (control: ControlInput, index: Int) {
         guard route.count > 0 else { return (ControlInput(throttle: 0.5), 0) }
         let here = route.nearestIndex(east: s.east, north: s.north, hint: hint)
         let ahead = Int((lookahead(speed: s.speed) / route.spacing).rounded())
@@ -21,8 +40,32 @@ public enum Autopilot {
         let headingError = wrapPi(desired - s.heading)
         let roll = clamp(headingError / bankLimit, -1, 1)
 
-        // Pitch: altitude error at the aim point, full pitch at 60 m.
-        let altitudeError = aim.altitude - s.altitude
+        // Pitch: altitude error at the target altitude over the aim point, full pitch at 60 m. With no obstacles the
+        // roof is taken as the route's own altitude, which reads the sample as a street.
+        // Lowering is limited by the spare room over the whole stretch from here to well past the aim (250 m): the route's
+        // height minus the roofs minus 30 m, at its tightest. A street, or a tower the route climbs over, anywhere in that
+        // stretch takes the lowering down to zero, which is the route's own proven height. Raising needs no check.
+        var effective = max(heightOffset, 0)
+        if let obstacles, heightOffset < 0 {
+            var room = Double.infinity
+            var highest = route.samples[here].altitude
+            let last = ahead + Int((250 / route.spacing).rounded())
+            var k = 0
+            while k <= last {
+                let sm = route.samples[(here + k) % route.count]
+                let roof = roofHeight(east: sm.east, north: sm.north, radius: 60, obstacles: obstacles)
+                room = min(room, max(0, sm.altitude - roof - 30))
+                highest = max(highest, sm.altitude)
+                if room == 0 { break }
+                k += 2
+            }
+            // A climb ahead (the route going over a tower) leaves no room to be lower: the aircraft cannot make up more
+            // than about 60 m of height (full pitch) on the way up. So the allowance shrinks as the climb grows.
+            let climb = highest - route.samples[here].altitude
+            effective = max(heightOffset, -min(room, max(0, 60 - climb)))
+        }
+        let targetAlt = aim.altitude + effective
+        let altitudeError = targetAlt - s.altitude
         let pitch = clamp(altitudeError / 60, -1, 1)
 
         // Speed: the waypoint speed, capped by the tightest curve in the next 300 m (8.4).

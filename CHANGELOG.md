@@ -2,6 +2,17 @@
 
 All notable changes to Gullfire are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Gullfire uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-11-18
+
+### Added
+
+- Flight height: T and V raise and lower the autopilot's flight height in 10 m steps, from 60 m below to 120 m above the route's own height. The HUD shows it as HEIGHT. It resets to 0 when you change route with C.
+- Mouse flight: J turns it on and off. Moving the mouse right banks right, and moving it forward puts the nose down. The scroll wheel changes throttle. Turning it on switches to manual flight, and Esc gives the pointer back. Settings (View tab) has Mouse flight sensitivity and Invert pitch.
+
+### Known issues
+
+- Mouse flight does not work with a trackpad yet. It works with a mouse.
+
 ## [1.0.1] - 2026-11-18
 
 ### Changed

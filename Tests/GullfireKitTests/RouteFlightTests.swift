@@ -21,7 +21,8 @@ struct RouteFlightTests {
     }
 
     /// Flies `seconds` on autopilot from the route's first sample.
-    static func flyAutopilot(_ route: Route, city: CityPackage, seconds: Double) -> Flown {
+    static func flyAutopilot(_ route: Route, city: CityPackage, seconds: Double,
+                             heightOffset: Double = 0, withObstacles: Bool = false) -> Flown {
         let t = FlightTuning()
         let a = route.samples[0], b = route.samples[1]
         let start = FlightState(east: a.east, north: a.north, altitude: a.altitude,
@@ -34,7 +35,8 @@ struct RouteFlightTests {
         var last = (e: start.east, n: start.north)
         for _ in 0..<Int(seconds / t.fixedStep) {
             sim.advance(by: t.fixedStep, obstacles: city, extent: extent) { s, _ in
-                let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t)
+                let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t,
+                                         heightOffset: heightOffset, obstacles: withObstacles ? city : nil)
                 hint = r.index
                 return r.control
             }

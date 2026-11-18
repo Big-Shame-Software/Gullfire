@@ -1,3 +1,4 @@
+import AppKit
 import GullfireKit
 import SwiftUI
 
@@ -224,9 +225,121 @@ struct ViewSettingsTab: View {
             Section {
                 Toggle("Show key commands", isOn: $model.showKeys)
             }
+
+            Section {
+                LabeledContent("Sensitivity") {
+                    HStack {
+                        Slider(value: $model.mouseSensitivity, in: 0.25...4)
+                            .frame(width: 200)
+                            .accessibilityLabel("Mouse sensitivity")
+                        Text(String(format: "%.2f", model.mouseSensitivity))
+                            .monospacedDigit()
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+                Toggle("Invert pitch", isOn: $model.mouseInvert)
+                LabeledContent("Try it") {
+                    MouseDemoPad(sensitivity: model.mouseSensitivity, invert: model.mouseInvert)
+                        .frame(width: 260, height: 130)
+                }
+            } header: {
+                Text("Mouse flight")
+            } footer: {
+                Text("Press J in flight to fly with the mouse. Esc gives it back.")
+            }
         }
         .formStyle(.grouped)
         .fixedSize(horizontal: false, vertical: true)
         .padding()
     }
+}
+
+
+/// A little stick to try the mouse settings on. Move the pointer over the pad: the dot is the stick, driven by the same
+/// `MouseFlight` that flies the aircraft, with the current sensitivity and invert. The words say what it would do, so
+/// nothing depends on colour or on the dot alone.
+struct MouseDemoPad: NSViewRepresentable {
+    var sensitivity: Double
+    var invert: Bool
+
+    func makeNSView(context: Context) -> MouseDemoNSView { MouseDemoNSView() }
+
+    func updateNSView(_ view: MouseDemoNSView, context: Context) {
+        view.flight.sensitivity = sensitivity
+        view.flight.invertPitch = invert
+    }
+}
+
+final class MouseDemoNSView: NSView {
+    var flight = MouseFlight()
+    private var dx = 0.0, dy = 0.0
+    private var roll = 0.0, pitch = 0.0
+    private var timer: Timer?
+
+    override var isFlipped: Bool { true }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        timer?.invalidate()
+        timer = nil
+        guard window != nil else { return }
+        window?.acceptsMouseMovedEvents = true
+        let t = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas { removeTrackingArea(area) }
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        dx += Double(event.deltaX)
+        dy += Double(event.deltaY)
+    }
+
+    private func tick() {
+        let out = flight.update(deltaX: dx, deltaY: dy, wheel: 0, dt: 1.0 / 60)
+        dx = 0
+        dy = 0
+        guard out.roll != roll || out.pitch != pitch else { return }
+        roll = out.roll
+        pitch = out.pitch
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let box = bounds.insetBy(dx: 1, dy: 1)
+        let frame = NSBezierPath(roundedRect: box, xRadius: 8, yRadius: 8)
+        NSColor.separatorColor.setStroke()
+        frame.lineWidth = 1
+        frame.stroke()
+
+        let cx = box.midX, cy = box.midY
+        let cross = NSBezierPath()
+        cross.move(to: NSPoint(x: box.minX + 8, y: cy)); cross.line(to: NSPoint(x: box.maxX - 8, y: cy))
+        cross.move(to: NSPoint(x: cx, y: box.minY + 8)); cross.line(to: NSPoint(x: cx, y: box.maxY - 8))
+        NSColor.separatorColor.setStroke()
+        cross.stroke()
+
+        // Mouse forward (up the pad) is nose down, so pitch -1 sits at the top.
+        let r = 7.0
+        let x = cx + roll * (box.width / 2 - 14)
+        let y = cy + pitch * (box.height / 2 - 14)
+        let dot = NSBezierPath(ovalIn: NSRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
+        NSColor.labelColor.setFill()
+        dot.fill()
+
+        let font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.secondaryLabelColor]
+        let bank = abs(roll) < 0.05 ? "LEVEL" : (roll > 0 ? "BANK RIGHT" : "BANK LEFT")
+        let nose = abs(pitch) < 0.05 ? "" : (pitch < 0 ? "NOSE DOWN" : "NOSE UP")
+        "\(bank)  \(nose)".draw(at: NSPoint(x: box.minX + 10, y: box.maxY - 18), withAttributes: attrs)
+        "Move the pointer here".draw(at: NSPoint(x: box.minX + 10, y: box.minY + 6), withAttributes: attrs)
+    }
+
 }

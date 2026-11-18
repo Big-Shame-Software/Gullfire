@@ -16,6 +16,8 @@ struct HUDView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(model.hud.mode)
                 Text(String(format: "ALTITUDE %04.0f FT", model.hud.altitudeFt))
+                Text(model.hud.heightOffsetM == 0 ? "HEIGHT 0 M" : String(format: "HEIGHT %+.0f M", model.hud.heightOffsetM))
+                if model.mouseFlight { Text("MOUSE ON / ESC TO RELEASE") }
                 Text(String(format: "GROUND SPEED %04.0f KTS", model.hud.speedKt))
                 Text(String(format: "HEADING %03.0f°", model.hud.headingDeg))
                 Text(String(format: "POSITION %.4f %@ %.4f %@", abs(model.hud.latitude),
@@ -45,5 +47,19 @@ struct HUDView: View {
         .foregroundStyle(ink)
         .padding(16)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The mouse-flight notice on its own, for when the HUD is off: the pointer is hidden and frozen, so the
+/// screen must always say why and how to get it back. Text, in the HUD's ink.
+struct MouseNoticeView: View {
+    let model: AppModel
+
+    var body: some View {
+        let c = model.palette.line
+        Text("MOUSE ON / ESC TO RELEASE")
+            .font(.system(.body, design: .monospaced))
+            .foregroundStyle(Color(red: Double(c.x), green: Double(c.y), blue: Double(c.z)))
+            .padding(16)
     }
 }
