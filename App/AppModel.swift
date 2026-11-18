@@ -208,7 +208,7 @@ final class AppModel {
         #if DEBUG
         // Test hooks, Debug builds only: the MIDI mode for this run, and an autostart that turns music on as M would.
         if let mode = env["GULLFIRE_MUSIC_MIDI"].flatMap(MIDIMusic.Mode.init(rawValue:)) { midiMode = mode }
-        if env["GULLFIRE_MUSIC_AUTOSTART"] == "1" { DispatchQueue.main.async { self.toggleMusic() } }
+        if env["GULLFIRE_MUSIC_AUTOSTART"] == "1" { DispatchQueue.main.async { self.toggleMusic(reason: "debug autostart") } }
         #endif
         // Silent at launch: nothing plays until M.
         print("gullfire[pid \(ProcessInfo.processInfo.processIdentifier)]: started")
@@ -323,21 +323,23 @@ final class AppModel {
     }
 
     /// Starts the MIDI piece: the chosen file or the bundled Satie, endless or loop, with a new seed each start.
-    func startMIDI() {
+    func startMIDI(reason: String) {
+        let mode = midiMode ?? .endless
+        let chosenPiece: (midi: URL, sidecar: URL)? = midiFile.map { (midi: $0, sidecar: MIDIMusic.sidecarURL(for: $0)) } ?? Self.bundledPiece
+        // D9 guard (4.2): the same piece already playing in this mode is ignored, so a stray second call cannot restart it.
+        // Checked before anything stops. Logged with the reason, as the start is.
+        if let chosenPiece, let midi, midi.isAlreadyPlaying(chosenPiece.midi, mode: mode) {
+            print("midiloop[pid \(ProcessInfo.processInfo.processIdentifier)]: start ignored, already playing, reason \(reason)")
+            return
+        }
         stopAllMusic()
         guard let midi else { musicStatus = "The MIDI pad is not available."; return }
-        let mode = midiMode ?? .endless
-        let piece: (midi: URL, sidecar: URL)
-        if let chosen = midiFile {
-            piece = (chosen, MIDIMusic.sidecarURL(for: chosen))
-        } else if let bundled = Self.bundledPiece {
-            piece = bundled
-        } else {
+        guard let piece = chosenPiece else {
             musicStatus = "The demo piece is missing from the app."
             return
         }
         do {
-            try midi.start(midi: piece.midi, sidecar: piece.sidecar, mode: mode, seed: UInt64.random(in: 1...UInt64.max))
+            try midi.start(midi: piece.midi, sidecar: piece.sidecar, mode: mode, seed: UInt64.random(in: 1...UInt64.max), reason: reason)
             musicStatus = "MIDI piece, \(mode == .endless ? "endless" : "looping")"
         } catch {
             musicStatus = "The MIDI piece would not play: \(error)"
@@ -513,7 +515,7 @@ final class AppModel {
             useCathedral = false
         }
         cathedralNotice = ""
-        if wasOn { toggleMusic() }
+        if wasOn { toggleMusic(reason: "Settings: source change") }
     }
 
     /// The Settings resolution choice. Saved on each choice, as the View menu toggle is.
@@ -551,11 +553,11 @@ final class AppModel {
 
     /// M: music on or off. The last choice plays (the MIDI piece, the cathedral, or the folder). With nothing
     /// chosen, the bundled Satie plays endlessly.
-    func toggleMusic() {
+    func toggleMusic(reason: String = "M key") {
         if isMusicOn { stopAllMusic(); return }
-        if midiMode != nil { startMIDI(); return }
+        if midiMode != nil { startMIDI(reason: reason); return }
         if useCathedral || musicFolder != nil { startMusic(); return }
-        startMIDI()
+        startMIDI(reason: reason)
     }
 
     /// Asks for a MIDI file and plays it endlessly.
@@ -572,7 +574,7 @@ final class AppModel {
         midiMode = midiMode ?? .endless
         useCathedral = false
         showCathedralSheet = false
-        startMIDI()
+        startMIDI(reason: "Choose MIDI File")
     }
 
     /// Asks for the music folder (folders only) and starts playing from it.

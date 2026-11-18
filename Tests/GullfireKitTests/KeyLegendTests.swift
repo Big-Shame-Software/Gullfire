@@ -22,6 +22,12 @@ struct KeyLegendTests {
         #expect(with.count == without.count + 1)
     }
 
+    /// The C row says what C does (D1 A): it names the next route, not just the word ROUTE.
+    @Test func cRowSaysItGoesToTheNextRoute() {
+        let flight = KeyLegend.groups.first { $0.title == "FLIGHT" }
+        #expect(flight?.entries.first { $0.key == "C" }?.label == "NEXT ROUTE")
+    }
+
     @Test func noKeyIsBothHeldAndAction() {
         #expect(KeyLegend.heldKeys.isDisjoint(with: KeyLegend.actionKeys))
     }

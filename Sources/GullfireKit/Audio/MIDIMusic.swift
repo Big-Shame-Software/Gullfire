@@ -26,6 +26,7 @@ public final class MIDIMusic {
     @ObservationIgnored private let engine: AVAudioEngine
     @ObservationIgnored private let player: MIDILoopPlayer
     @ObservationIgnored private var loadedURL: URL?
+    @ObservationIgnored private var playingMode: Mode?
 
     /// Attaches the pad to the engine and bus the folder and cathedral sources share. Throws if the format is unusable.
     public init(engine: AVAudioEngine, output: AVAudioNode) throws {
@@ -33,9 +34,15 @@ public final class MIDIMusic {
         self.player = try MIDILoopPlayer(engine: engine, output: output)
     }
 
+    /// The line logged when a piece starts (4.2): the process, the piece, the mode, the seed and why it was started.
+    /// Pure, so a test can check it.
+    public static func playingLine(pid: Int32, title: String, mode: Mode, seed: UInt64, reason: String) -> String {
+        "midiloop[pid \(pid)]: playing \(title), \(mode.rawValue), seed \(seed), reason \(reason)"
+    }
+
     /// Plays a MIDI file. `sidecar` holds its loop map: read when it matches the file, written when it does not
-    /// (a bundled file's map is read-only, so it must already match).
-    public func start(midi url: URL, sidecar: URL, mode: Mode, seed: UInt64) throws {
+    /// (a bundled file's map is read-only, so it must already match). `reason` says what asked for the start (logged).
+    public func start(midi url: URL, sidecar: URL, mode: Mode, seed: UInt64, reason: String = "unspecified") throws {
         stop()
         let piece = try MIDIPerformance(contentsOf: url)
         let map = try LoopMap.load(piece, sidecar: sidecar, style: .balanced)
@@ -53,10 +60,11 @@ public final class MIDIMusic {
         let cursor = EventCursor(piece: piece, map: map, mode: mode == .endless ? .endless : .loop, seed: seed)
         player.play(cursor)
         loadedURL = url
+        playingMode = mode
         title = url.deletingPathExtension().lastPathComponent
         isOn = true
         isPlaying = true
-        print("midiloop[pid \(ProcessInfo.processInfo.processIdentifier)]: playing \(title), \(mode.rawValue), seed \(seed)")
+        print(Self.playingLine(pid: ProcessInfo.processInfo.processIdentifier, title: title, mode: mode, seed: seed, reason: reason))
     }
 
     /// Stops the piece: every sounding note is released, then the engine stops (the app runs no other source now).
@@ -68,6 +76,13 @@ public final class MIDIMusic {
         isPlaying = false
         title = ""
         loadedURL = nil
+        playingMode = nil
+    }
+
+    /// The D9 guard (4.2): whether this piece is already playing in this mode. A start of the same piece in the same
+    /// mode is then ignored, so a stray second call cannot restart it.
+    public func isAlreadyPlaying(_ url: URL, mode: Mode) -> Bool {
+        isOn && loadedURL == url && playingMode == mode
     }
 
     /// Pauses or resumes the engine, which holds the piece's place: the scheduler keeps its events ahead.

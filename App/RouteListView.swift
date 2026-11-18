@@ -3,8 +3,8 @@ import GullfireKit
 import SwiftUI
 
 /// The route list (D1), at the bottom centre in a box that catches the eye: a bright border, a dark fill in the
-/// palette's ink, and bright text. Shown after C for 4 s, then faded over 0.5 s (dropped at once with
-/// Reduce Motion). The route that flies is marked `▶`, the word NOW and full opacity; the others are dimmer.
+/// palette's ink, and bright text. Shown at launch and after C for 4 s, with the hint line under the routes (D4 to D6),
+/// then faded over 0.5 s (dropped at once with Reduce Motion). The route that flies is marked `▶`, the word NOW and full opacity; the others are dimmer.
 /// The marks carry the meaning, not the colour.
 struct RouteListView: View {
     let model: AppModel
@@ -33,6 +33,9 @@ struct RouteListView: View {
                                 Text(list.row(at: index))
                                     .opacity(index == list.current ? 1 : 0.7)
                             }
+                            // D4, D5: the hint is on every showing, so the list always says how the route changes.
+                            Text(RouteList.hintLine)
+                                .padding(.top, 8)
                         }
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(color(model.palette.line))

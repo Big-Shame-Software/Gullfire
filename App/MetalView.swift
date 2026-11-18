@@ -42,6 +42,14 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     private var lastPublish = 0.0
     private var lastFootprint = 0.0
     private var firstFrameMarked = false
+    /// The launch hint (D6): the route list with its hint line, shown once. Waits for full screen to settle
+    /// when the window is going full screen, so the switch does not use up the hold.
+    private var launchHintPending = true
+    private var fullScreenSettled = false
+    /// When the first frame was presented (seconds, the frame clock), for the launch hint's wait.
+    private var firstFrameAt: Double?
+    /// The flight window, set when the view joins it, so the launch announcement goes to this window and not to whatever is key.
+    weak var window: NSWindow?
 
     init(model: AppModel, city: CityPackage, view: MTKView, input: FlightInput, width: Int, height: Int) throws {
         self.model = model
@@ -161,6 +169,44 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         }
     }
 
+    /// Whether the window is going to full screen at launch: FlightView does that unless GULLFIRE_WINDOWED is set,
+    /// and the Debug capture hook never does.
+    static var launchGoesFullScreen: Bool {
+        let env = ProcessInfo.processInfo.environment
+        if env["GULLFIRE_WINDOWED"] != nil { return false }
+        #if DEBUG
+        if env["GULLFIRE_SNAPSHOT_TO"] != nil { return false }
+        #endif
+        return true
+    }
+
+    /// Called when the window has finished entering full screen (from MetalView).
+    func windowFinishedFullScreen() {
+        fullScreenSettled = true
+    }
+
+    /// The launch hint (D6, D7): the route list with its hint line, held and faded as after C, and announced at low
+    /// priority so it waits for the user rather than cutting across the window. Shown once, on the first frame after the
+    /// window has settled.
+    private func showLaunchHintIfReady(now: Double) {
+        guard launchHintPending, !routes.isEmpty, let firstFrameAt else { return }
+        guard RouteList.launchHintDue(fullScreenSettled: fullScreenSettled, goesFullScreen: Self.launchGoesFullScreen,
+                                      secondsSinceFirstFrame: now - firstFrameAt) else { return }
+        launchHintPending = false
+        var list = model.routeList ?? RouteList(items: routes.map { RouteList.Item(name: $0.name, lengthKm: $0.length / 1000) })
+        var shownAt = now
+        #if DEBUG
+        // D8: the Debug capture keeps the hint up, so it can be checked by eye in a capture.
+        if ProcessInfo.processInfo.environment["GULLFIRE_SNAPSHOT_TO"] != nil { shownAt += 3600 }
+        #endif
+        list.show(current: routeIndex, at: shownAt, inManual: pilot.mode == .manual)
+        model.routeList = list
+        // The flight window, not whatever is key; NSApp when the view has no window (D7 follow-up).
+        let target: Any = window.map { $0 as Any } ?? NSApp as Any
+        NSAccessibility.post(element: target, notification: .announcementRequested,
+                             userInfo: [.announcement: list.launchAnnouncement, .priority: NSAccessibilityPriorityLevel.low.rawValue])
+    }
+
     /// The mode line: manual, cruise on the current route, or a hand-over in progress.
     private func modeLine() -> String {
         switch pilot.mode {
@@ -260,9 +306,11 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
                                  segments: renderer.lastSegmentsDrawn)
         if !firstFrameMarked {
             firstFrameMarked = true
+            firstFrameAt = now
             model.timing.mark("first frame presented")
             model.timing.checkpoint("mark 6 first frame presented")
         }
+        showLaunchHintIfReady(now: now)
         lastFrameTime = now
         windowFrames += 1
         model.session.frames += 1
@@ -314,6 +362,7 @@ struct MetalView: NSViewRepresentable {
         var input: FlightInput?
         var observedWindow: NSWindow?
         var occlusion: NSObjectProtocol?
+        var fullScreen: NSObjectProtocol?
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -390,6 +439,7 @@ struct MetalView: NSViewRepresentable {
     private func attach(_ view: FlightMTKView, coordinator: Coordinator) {
         guard let window = view.window, coordinator.observedWindow !== window else { return }
         coordinator.observedWindow = window
+        coordinator.flight?.window = window
         window.makeFirstResponder(view)
         coordinator.occlusion = NotificationCenter.default.addObserver(
             forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
@@ -405,6 +455,13 @@ struct MetalView: NSViewRepresentable {
                 }
             }
         }
+        // The launch hint waits for full screen to settle (D6). A window already in full screen (restored) is settled now.
+        coordinator.fullScreen = NotificationCenter.default.addObserver(
+            forName: NSWindow.didEnterFullScreenNotification, object: window, queue: .main
+        ) { [weak coordinator] _ in
+            MainActor.assumeIsolated { coordinator?.flight?.windowFinishedFullScreen() }
+        }
+        if window.styleMask.contains(.fullScreen) { coordinator.flight?.windowFinishedFullScreen() }
         view.isPaused = !window.occlusionState.contains(.visible)
         scheduleTestHide(view: view)
         // Test only: a window restored in full screen, in a Space that is not showing, stays

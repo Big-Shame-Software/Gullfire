@@ -70,9 +70,29 @@ public struct RouteList: Sendable, Equatable {
         return "\(marker) \(item.name.uppercased())  \(km)\(now)"
     }
 
+    /// The line under the routes, on every showing (D4, D5): how a new user changes the route.
+    public static let hintLine = "PRESS C FOR THE NEXT ROUTE"
+
+    /// Seconds after the first frame to wait for full screen before showing the launch hint anyway (D6, fallback).
+    public static let launchFullScreenWaitSeconds = 3.0
+
+    /// Whether the launch hint shows now (D6). It shows once the window has settled in full screen, when the window is
+    /// not going full screen at all, or when the wait has run out, so a refused or failed full screen (or one in a Space
+    /// that is not showing) never loses it.
+    public static func launchHintDue(fullScreenSettled: Bool, goesFullScreen: Bool, secondsSinceFirstFrame: Double) -> Bool {
+        if fullScreenSettled || !goesFullScreen { return true }
+        return secondsSinceFirstFrame >= launchFullScreenWaitSeconds
+    }
+
     /// What VoiceOver says for the current route.
     public var announcement: String {
         guard items.indices.contains(current) else { return "" }
         return "Route \(items[current].name), \(current + 1) of \(items.count)"
+    }
+
+    /// What VoiceOver says when the list appears at launch (D7): the route, then the hint.
+    public var launchAnnouncement: String {
+        guard !announcement.isEmpty else { return "" }
+        return "\(announcement). Press C for the next route."
     }
 }

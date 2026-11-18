@@ -72,4 +72,40 @@ private func variableLength(_ value: Int) -> [UInt8] {
         music.stop()
         try? FileManager.default.removeItem(at: folder)
     }
+
+    /// 4.2: every start logs the process and the reason it was asked for, so a repeat of the double start can be traced.
+    @Test func playingLineNamesTheProcessAndTheReasonForTheStart() {
+        let line = MIDIMusic.playingLine(pid: 4321, title: "gymnopedie_1", mode: .endless, seed: 77, reason: "debug autostart")
+        #expect(line == "midiloop[pid 4321]: playing gymnopedie_1, endless, seed 77, reason debug autostart")
+        #expect(line.contains("reason Settings: source change") == false)
+        let settings = MIDIMusic.playingLine(pid: 1, title: "t", mode: .loop, seed: 2, reason: "Settings: source change")
+        #expect(settings.hasSuffix("reason Settings: source change"))
+    }
+
+    /// 4.2 D9 guard: the same piece in the same mode counts as already playing; a different mode, a different file,
+    /// or a stopped piece does not.
+    @Test func guardSeesOnlyTheSamePieceInTheSameModeWhilePlaying() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("gullfire-midi-guard-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let midi = folder.appendingPathComponent("piece.mid")
+        let other = folder.appendingPathComponent("other.mid")
+        try writeGeneratedMIDI(midi)
+        try writeGeneratedMIDI(other)
+
+        let engine = AVAudioEngine()
+        let output = AVAudioMixerNode()
+        engine.attach(output)
+        engine.connect(output, to: engine.mainMixerNode, format: nil)
+        let music = try MIDIMusic(engine: engine, output: output)
+
+        #expect(!music.isAlreadyPlaying(midi, mode: .endless))
+        try music.start(midi: midi, sidecar: MIDIMusic.sidecarURL(for: midi), mode: .endless, seed: 1)
+        #expect(music.isAlreadyPlaying(midi, mode: .endless))
+        #expect(!music.isAlreadyPlaying(midi, mode: .loop))
+        #expect(!music.isAlreadyPlaying(other, mode: .endless))
+
+        music.stop()
+        #expect(!music.isAlreadyPlaying(midi, mode: .endless))
+        try? FileManager.default.removeItem(at: folder)
+    }
 }

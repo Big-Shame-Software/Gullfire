@@ -69,4 +69,33 @@ struct RouteListTests {
     @Test func announcesTheCurrentRouteWithItsPosition() {
         #expect(sample(current: 2).announcement == "Route Street 3, 3 of 3")
     }
+
+    @Test func launchHintWaitsForFullScreenWhileWithinTheWindow() {
+        // Going full screen, not yet settled, under 3 s: wait.
+        #expect(!RouteList.launchHintDue(fullScreenSettled: false, goesFullScreen: true, secondsSinceFirstFrame: 0.5))
+        #expect(!RouteList.launchHintDue(fullScreenSettled: false, goesFullScreen: true, secondsSinceFirstFrame: 2.99))
+    }
+
+    @Test func launchHintShowsOnceFullScreenHasSettled() {
+        #expect(RouteList.launchHintDue(fullScreenSettled: true, goesFullScreen: true, secondsSinceFirstFrame: 0.2))
+    }
+
+    @Test func launchHintShowsAtOnceWhenTheWindowStaysWindowed() {
+        #expect(RouteList.launchHintDue(fullScreenSettled: false, goesFullScreen: false, secondsSinceFirstFrame: 0))
+    }
+
+    @Test func launchHintShowsAfterTheWaitWhenFullScreenNeverSettles() {
+        // Refused, failed, or in a Space that is not showing: the hint must still appear.
+        #expect(RouteList.launchHintDue(fullScreenSettled: false, goesFullScreen: true, secondsSinceFirstFrame: 3.0))
+        #expect(RouteList.launchHintDue(fullScreenSettled: false, goesFullScreen: true, secondsSinceFirstFrame: 12))
+    }
+
+    @Test func launchAnnouncementGivesTheRouteThenTheHint() {
+        #expect(sample(current: 0).launchAnnouncement == "Route Scenic, 1 of 3. Press C for the next route.")
+    }
+
+    @Test func launchAnnouncementIsEmptyWithNoRoutes() {
+        let list = RouteList(items: [])
+        #expect(list.launchAnnouncement == "")
+    }
 }

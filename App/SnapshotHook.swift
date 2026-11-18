@@ -19,8 +19,13 @@ enum SnapshotHook {
 
     static var outputPath: String? { ProcessInfo.processInfo.environment["GULLFIRE_SNAPSHOT_TO"] }
     private static var view: String { ProcessInfo.processInfo.environment["GULLFIRE_SNAPSHOT_VIEW"] ?? "flight" }
-    /// The flight window's content size for the capture, in points (16:9, a size that suits a README picture).
-    static let flightSize = NSSize(width: 1280, height: 720)
+    /// The flight window's content size for the capture, in points. 1280 x 720 (16:9, a size that suits a README picture)
+    /// unless GULLFIRE_SNAPSHOT_SIZE=WxH asks for another, e.g. 800x500 for the narrow-window check.
+    static var flightSize: NSSize {
+        let parts = (ProcessInfo.processInfo.environment["GULLFIRE_SNAPSHOT_SIZE"] ?? "").split(separator: "x").compactMap { Double($0) }
+        if parts.count == 2, parts[0] >= 300, parts[1] >= 200 { return NSSize(width: parts[0], height: parts[1]) }
+        return NSSize(width: 1280, height: 720)
+    }
 
     /// Starts the capture when the hook is on. Both closures are read after the windows have drawn.
     static func run(attribution: @escaping @MainActor () -> String?, mainWindow: @escaping @MainActor () -> NSWindow?) {

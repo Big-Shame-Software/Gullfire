@@ -32,8 +32,7 @@ In 1981 a movie imagined what a navigation computer would show a pilot coming in
 - The River route can drop to about 33 frames a second for a few seconds during a long full-screen flight. The cause is not known yet.
 - In full-screen 5K runs, memory use moves between about 630 MB and 930 MB. The cause is not known yet.
 - Something outside the app can briefly hide its window during a run. We have seen it, and have not found the cause.
-- Settings and the route list have not yet been checked with VoiceOver.
-- The audio has not been checked across a full-screen change.
+- VoiceOver reads Settings and the route announced when you press C. It does not yet read the route hint at launch or the key list.
 - Nothing here has a date.
 
 ## Use
@@ -42,7 +41,7 @@ In 1981 a movie imagined what a navigation computer would show a pilot coming in
 2. Build Chicago's map with `Tools/build_chicago.sh`. See Getting a city below. You should see six steps print in turn, with each one's time.
 3. Open the app: `open DerivedData/Build/Products/Release/Gullfire.app`. You should see the flight over Chicago, starting on the Scenic route, with the key list at the bottom right.
 
-Start the app and it flies the Scenic route on autopilot.
+Start the app and it flies the Scenic route on autopilot. The list of routes appears at the bottom of the window at launch, with the line PRESS C FOR THE NEXT ROUTE. Press C to change the route.
 
 | Key | Action |
 |---|---|
@@ -52,7 +51,7 @@ Start the app and it flies the Scenic route on autopilot.
 | Shift / Control | Throttle up / down |
 | Space | Cruise or manual (manual to cruise blends over 3 seconds) |
 | R | Level off |
-| C | Switch route, and show the list of routes at the bottom of the window |
+| C | Next route, and show the list of routes at the bottom of the window |
 | B | Cycle the colour scheme (Default, Brand, Lime) |
 | P | Show or hide the performance overlay |
 | H | Cycle the readout: off, then the flight information, then the flight information with the performance and session lines |

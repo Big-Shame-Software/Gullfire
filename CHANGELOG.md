@@ -2,6 +2,17 @@
 
 All notable changes to Gullfire are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Gullfire uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-11-18
+
+### Changed
+
+- The route list appears at the bottom of the window when the app starts, for four seconds, with the line PRESS C FOR THE NEXT ROUTE. The line is also under the list each time you press C.
+- The key list's C row reads NEXT ROUTE, not ROUTE.
+
+### Fixed
+
+- A second start request no longer restarts the MIDI piece while it is already playing.
+
 ## [1.0.0] - 2026-11-17
 
 The first release. Gullfire flies a simulated aircraft over a real city, drawn as green hidden-line wireframes. Chicago is the one city this release prepares. You build its map once from public data; the app itself never uses the network.

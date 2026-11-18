@@ -31,7 +31,7 @@ public enum KeyLegend {
         Group(title: "FLIGHT", entries: [
             Entry(key: "SPACE", label: "CRUISE / MANUAL", manualOnly: false),
             Entry(key: "R", label: "LEVEL OFF", manualOnly: false),
-            Entry(key: "C", label: "ROUTE", manualOnly: false),
+            Entry(key: "C", label: "NEXT ROUTE", manualOnly: false),
         ]),
         Group(title: "VIEW", entries: [
             Entry(key: "B", label: "PALETTE", manualOnly: false),
