@@ -16,27 +16,36 @@
 		0B5745A4350A89205BD426F6 /* Palette.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7C8012E424F1E5291B29D90 /* Palette.swift */; };
 		1FA284CDE5F8D369FFACC749 /* GullfireApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901808A53912B74760A0845B /* GullfireApp.swift */; };
 		1FAA459E93A5A45D383FA0FC /* CathedralFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 274C905C6427D3FCCA7FB623 /* CathedralFinder.swift */; };
+		2173D476585A84C96148E537 /* StreetGraph.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DB375CA51692B867003FBCA /* StreetGraph.swift */; };
 		252A6585C37ABE055854CEEA /* AutoOrbit.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54BADC2BBACA09A06D90FFB /* AutoOrbit.swift */; };
+		267262B13B60A6EDC73A745A /* ProfileRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EFEE8649EFF16171108F31F /* ProfileRepair.swift */; };
 		282AD65ECA1066876A0ADEE7 /* CathedralSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880D4E70AB59756DBC22501E /* CathedralSheet.swift */; };
 		298AEB7678FB3010B0A110B5 /* gymnopedie_1.loopmap.json in Resources */ = {isa = PBXBuildFile; fileRef = AC1356A245FE81FD2C679CA6 /* gymnopedie_1.loopmap.json */; };
 		2CAC0521C1D5620219D0B8C0 /* ProfilePlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD972A6F677928B8BDA3AF1E /* ProfilePlot.swift */; };
+		330456FEC5C2F5BAB196564E /* JoinBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9470784BD9AC16A97E461DF8 /* JoinBuilder.swift */; };
 		3CFBF749568CD90D66A45ABC /* GullfireKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 556DF430D8507C141E28566B /* GullfireKit.framework */; };
+		4183CBDC3B6A501B90A36AB4 /* RouteWalker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4744DF3F0CD34D39EF83A245 /* RouteWalker.swift */; };
 		429F8B209256A9E896EE0B0B /* CrossfadePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48AEC08DE628354739FDBD9A /* CrossfadePlayer.swift */; };
 		43C5057F56FE9C851A51B075 /* FlightState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D42E047F2E719125B07407 /* FlightState.swift */; };
+		44796739488F3A740E4D0AFA /* StreetOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3900F3D860E6525949A8AF /* StreetOverlay.swift */; };
 		4C004668846A7057A8E7E7C2 /* TileSpill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8296E7EA7F9CEDFD55248D0F /* TileSpill.swift */; };
 		4C124CD0E60A892EB77285C4 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ADA1049415905A193453E20 /* MetalView.swift */; };
 		52B1E4FDB25D6D7C6E3DBA15 /* Avoidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A953FDFD5DB5B386F35C95C2 /* Avoidance.swift */; };
 		58580193FF9D8A51BA7AC741 /* LocalFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9341BEF86A4D7F1B7979D00F /* LocalFrame.swift */; };
 		58624C363AC8BFAB06092985 /* GullfireKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 556DF430D8507C141E28566B /* GullfireKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		59EECB62981EEBBF1E5F9A6E /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A1B5E196866467B56690B68 /* EmptyStateView.swift */; };
+		5CD777B330C1CD581016B9EA /* EndlessFlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12E270D5382EBDF90E4CBD94 /* EndlessFlight.swift */; };
 		5EC8652BB87D6343E3F23DE9 /* Frustum.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058435BB6C2BFDFB1FF99B9C /* Frustum.swift */; };
 		60AA31BE204E31BF52AE4A03 /* FlightInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D323D1037AEAA5EED00F936 /* FlightInput.swift */; };
 		6548B9FE9C01D3C3EB6631A8 /* CrossfadePlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB962806E5F41594A30F2F5 /* CrossfadePlan.swift */; };
 		65FAE7E0037DED2A52F4A86A /* FlightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C7A3150EA2F9A624862AB6 /* FlightView.swift */; };
 		661BF1886504D25BD22FD878 /* RouteList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713BC99332897C6A29B3197F /* RouteList.swift */; };
+		6D7D36050BCDD847D6A75E98 /* StreetPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9044B377BB0347926BFA7904 /* StreetPicker.swift */; };
+		702A6B6AD14026D5B98425BF /* RouteAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73191F85381AD5E839AB3BC4 /* RouteAssembler.swift */; };
 		7B5D02F37349443935A98C91 /* KeyLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D0F12E3546455BCE6BB4BE /* KeyLegend.swift */; };
 		835866A8FC38438178C0A7B7 /* EarClip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D3355D865187322296342 /* EarClip.swift */; };
 		8FC3190B01639A4DBD07506A /* Route.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0453112C006CB941CA624F9D /* Route.swift */; };
+		9022620C77BB7952B352DE33 /* DryRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3547DA76C6C6E7B8AB4DFA /* DryRun.swift */; };
 		9B6535AEEB65CE2F6A350E0C /* Offscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5797B763F49AEBFB16FD07 /* Offscreen.swift */; };
 		9ED098DE1432A8BF1DF14A9C /* PackageWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE4925D6671D5C4D6AA0D22E /* PackageWriter.swift */; };
 		A07D455DC8F905130C171917 /* TrackPlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D07EE37E751C52411535F3C /* TrackPlot.swift */; };
@@ -54,6 +63,8 @@
 		BD7ADE07631003533348D002 /* RenderScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = 675CF1170631AB48D00DA630 /* RenderScale.swift */; };
 		C394E34F8FA494E0339C6EC3 /* HUDLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A16BAF076C1206CB12D57C2F /* HUDLevel.swift */; };
 		C527B132394AC665B6207166 /* LevelOfDetail.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96F0DBB2ED16C77621010605 /* LevelOfDetail.swift */; };
+		C53738386B26FB22A99785DB /* RouteChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E813050E0BA209D457BA3A85 /* RouteChecker.swift */; };
+		C6A492121ADE1DAAF2A9D665 /* ProfileSmoother.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A768991EF1C6510E3E5F589 /* ProfileSmoother.swift */; };
 		C7515A2ED61C1F577E2872DF /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = E6A1FE67997E3282DBA8F341 /* AppIcon.icon */; };
 		C99310FBC5C43F3020DD059E /* ChaseCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56E0420C9E22ADC08FFA02FA /* ChaseCamera.swift */; };
 		CA58B3F7DE01FA77F94C5E3C /* Autopilot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DFE6A6C6811486C332D7C60 /* Autopilot.swift */; };
@@ -104,7 +115,9 @@
 		058435BB6C2BFDFB1FF99B9C /* Frustum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Frustum.swift; sourceTree = "<group>"; };
 		07C7A3150EA2F9A624862AB6 /* FlightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightView.swift; sourceTree = "<group>"; };
 		0E26523E677E14AC112E2A1E /* Gullfire.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gullfire.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0F3900F3D860E6525949A8AF /* StreetOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetOverlay.swift; sourceTree = "<group>"; };
 		115699BF55008ADD2FEBDE97 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		12E270D5382EBDF90E4CBD94 /* EndlessFlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndlessFlight.swift; sourceTree = "<group>"; };
 		19FD429F642ECD72AB208E40 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1A1B5E196866467B56690B68 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		1AB962806E5F41594A30F2F5 /* CrossfadePlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossfadePlan.swift; sourceTree = "<group>"; };
@@ -118,8 +131,10 @@
 		2DFE6A6C6811486C332D7C60 /* Autopilot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Autopilot.swift; sourceTree = "<group>"; };
 		30D5F1756B44C48DE448931F /* SnapshotHook.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHook.swift; sourceTree = "<group>"; };
 		352208BC8154B1C595C6DE55 /* RouteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteListView.swift; sourceTree = "<group>"; };
+		3EFEE8649EFF16171108F31F /* ProfileRepair.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRepair.swift; sourceTree = "<group>"; };
 		4098959E239B1C205A96E2A7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		45187925AE49CABDF9924A89 /* Manifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manifest.swift; sourceTree = "<group>"; };
+		4744DF3F0CD34D39EF83A245 /* RouteWalker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteWalker.swift; sourceTree = "<group>"; };
 		48AEC08DE628354739FDBD9A /* CrossfadePlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossfadePlayer.swift; sourceTree = "<group>"; };
 		4ADA1049415905A193453E20 /* MetalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalView.swift; sourceTree = "<group>"; };
 		507E6D715A984054493E503D /* HUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUD.swift; sourceTree = "<group>"; };
@@ -127,6 +142,7 @@
 		56E0420C9E22ADC08FFA02FA /* ChaseCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChaseCamera.swift; sourceTree = "<group>"; };
 		5A2FD9A1CD650E2EE5A96E97 /* ObstacleGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObstacleGrid.swift; sourceTree = "<group>"; };
 		5B3956508813BC480517965D /* Gadgets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Gadgets; path = Packages/Gadgets; sourceTree = SOURCE_ROOT; };
+		5DB375CA51692B867003FBCA /* StreetGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetGraph.swift; sourceTree = "<group>"; };
 		5DB5AF4B0FC92DCD1BAC937E /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		60B1414A3F551DC9EE73D212 /* MusicSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSource.swift; sourceTree = "<group>"; };
 		675CF1170631AB48D00DA630 /* RenderScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderScale.swift; sourceTree = "<group>"; };
@@ -134,15 +150,20 @@
 		6AD8CE21DC1835890C93865E /* MusicLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicLibrary.swift; sourceTree = "<group>"; };
 		6DABABAA5DBBE2B1F0E2E633 /* MouseFlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseFlight.swift; sourceTree = "<group>"; };
 		713BC99332897C6A29B3197F /* RouteList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteList.swift; sourceTree = "<group>"; };
+		73191F85381AD5E839AB3BC4 /* RouteAssembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteAssembler.swift; sourceTree = "<group>"; };
 		7EC7FFEAA836691BE5902A6D /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
 		8296E7EA7F9CEDFD55248D0F /* TileSpill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileSpill.swift; sourceTree = "<group>"; };
 		83618CAA33899CD39D37ADC8 /* gymnopedie_1.mid */ = {isa = PBXFileReference; lastKnownFileType = audio.midi; path = gymnopedie_1.mid; sourceTree = "<group>"; };
 		880D4E70AB59756DBC22501E /* CathedralSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CathedralSheet.swift; sourceTree = "<group>"; };
+		8D3547DA76C6C6E7B8AB4DFA /* DryRun.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DryRun.swift; sourceTree = "<group>"; };
 		8EC344970AAEFED55CF7F831 /* GeoJSONLines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoJSONLines.swift; sourceTree = "<group>"; };
 		901808A53912B74760A0845B /* GullfireApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GullfireApp.swift; sourceTree = "<group>"; };
+		9044B377BB0347926BFA7904 /* StreetPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetPicker.swift; sourceTree = "<group>"; };
 		9341BEF86A4D7F1B7979D00F /* LocalFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFrame.swift; sourceTree = "<group>"; };
 		945C7BB381399E4AD8133F87 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		9470784BD9AC16A97E461DF8 /* JoinBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinBuilder.swift; sourceTree = "<group>"; };
 		96F0DBB2ED16C77621010605 /* LevelOfDetail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelOfDetail.swift; sourceTree = "<group>"; };
+		9A768991EF1C6510E3E5F589 /* ProfileSmoother.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSmoother.swift; sourceTree = "<group>"; };
 		9D323D1037AEAA5EED00F936 /* FlightInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightInput.swift; sourceTree = "<group>"; };
 		A16BAF076C1206CB12D57C2F /* HUDLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDLevel.swift; sourceTree = "<group>"; };
 		A5A0A15CC970BADDBC8DB283 /* CityPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPackage.swift; sourceTree = "<group>"; };
@@ -157,6 +178,7 @@
 		D8D42E047F2E719125B07407 /* FlightState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightState.swift; sourceTree = "<group>"; };
 		E4EC29868DE46892AAA33E21 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 		E6A1FE67997E3282DBA8F341 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		E813050E0BA209D457BA3A85 /* RouteChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteChecker.swift; sourceTree = "<group>"; };
 		EC9B8E98AF7CBF37870F4C92 /* Footprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Footprint.swift; sourceTree = "<group>"; };
 		F21660003787A6E7EF9C78C0 /* PerfLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfLog.swift; sourceTree = "<group>"; };
 		F24395483B174303BE0838F8 /* Simulation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Simulation.swift; sourceTree = "<group>"; };
@@ -266,15 +288,25 @@
 				2DFE6A6C6811486C332D7C60 /* Autopilot.swift */,
 				A953FDFD5DB5B386F35C95C2 /* Avoidance.swift */,
 				56E0420C9E22ADC08FFA02FA /* ChaseCamera.swift */,
+				8D3547DA76C6C6E7B8AB4DFA /* DryRun.swift */,
+				12E270D5382EBDF90E4CBD94 /* EndlessFlight.swift */,
 				04CABD385806029046A3FE32 /* FlightScript.swift */,
 				D8D42E047F2E719125B07407 /* FlightState.swift */,
 				A16BAF076C1206CB12D57C2F /* HUDLevel.swift */,
+				9470784BD9AC16A97E461DF8 /* JoinBuilder.swift */,
 				68D0F12E3546455BCE6BB4BE /* KeyLegend.swift */,
 				6DABABAA5DBBE2B1F0E2E633 /* MouseFlight.swift */,
+				3EFEE8649EFF16171108F31F /* ProfileRepair.swift */,
+				9A768991EF1C6510E3E5F589 /* ProfileSmoother.swift */,
 				F58A30F20942E7351FBD0144 /* RiverRoute.swift */,
 				0453112C006CB941CA624F9D /* Route.swift */,
+				73191F85381AD5E839AB3BC4 /* RouteAssembler.swift */,
+				E813050E0BA209D457BA3A85 /* RouteChecker.swift */,
 				713BC99332897C6A29B3197F /* RouteList.swift */,
+				4744DF3F0CD34D39EF83A245 /* RouteWalker.swift */,
 				F24395483B174303BE0838F8 /* Simulation.swift */,
+				0F3900F3D860E6525949A8AF /* StreetOverlay.swift */,
+				9044B377BB0347926BFA7904 /* StreetPicker.swift */,
 			);
 			path = Flight;
 			sourceTree = "<group>";
@@ -334,6 +366,7 @@
 				A5A0A15CC970BADDBC8DB283 /* CityPackage.swift */,
 				45187925AE49CABDF9924A89 /* Manifest.swift */,
 				CE4925D6671D5C4D6AA0D22E /* PackageWriter.swift */,
+				5DB375CA51692B867003FBCA /* StreetGraph.swift */,
 				C141914AEAE040FD34B262D5 /* TileIndex.swift */,
 				8296E7EA7F9CEDFD55248D0F /* TileSpill.swift */,
 			);
@@ -498,13 +531,16 @@
 				D01842B43E0A3B690320F9B0 /* CityPackage.swift in Sources */,
 				6548B9FE9C01D3C3EB6631A8 /* CrossfadePlan.swift in Sources */,
 				429F8B209256A9E896EE0B0B /* CrossfadePlayer.swift in Sources */,
+				9022620C77BB7952B352DE33 /* DryRun.swift in Sources */,
 				835866A8FC38438178C0A7B7 /* EarClip.swift in Sources */,
+				5CD777B330C1CD581016B9EA /* EndlessFlight.swift in Sources */,
 				B8D266832E615BC8807101C2 /* Extruder.swift in Sources */,
 				096ECD7226DC1ED6930BBC57 /* FlightScript.swift in Sources */,
 				43C5057F56FE9C851A51B075 /* FlightState.swift in Sources */,
 				5EC8652BB87D6343E3F23DE9 /* Frustum.swift in Sources */,
 				DC77ADA64369516CE6DC21AB /* GeoJSONLines.swift in Sources */,
 				C394E34F8FA494E0339C6EC3 /* HUDLevel.swift in Sources */,
+				330456FEC5C2F5BAB196564E /* JoinBuilder.swift in Sources */,
 				7B5D02F37349443935A98C91 /* KeyLegend.swift in Sources */,
 				C527B132394AC665B6207166 /* LevelOfDetail.swift in Sources */,
 				58580193FF9D8A51BA7AC741 /* LocalFrame.swift in Sources */,
@@ -518,13 +554,21 @@
 				9ED098DE1432A8BF1DF14A9C /* PackageWriter.swift in Sources */,
 				0B5745A4350A89205BD426F6 /* Palette.swift in Sources */,
 				2CAC0521C1D5620219D0B8C0 /* ProfilePlot.swift in Sources */,
+				267262B13B60A6EDC73A745A /* ProfileRepair.swift in Sources */,
+				C6A492121ADE1DAAF2A9D665 /* ProfileSmoother.swift in Sources */,
 				BD7ADE07631003533348D002 /* RenderScale.swift in Sources */,
 				BD106084739B89B085A7F75B /* Renderer.swift in Sources */,
 				D6C40218FE093190690544D2 /* RiverRoute.swift in Sources */,
 				8FC3190B01639A4DBD07506A /* Route.swift in Sources */,
+				702A6B6AD14026D5B98425BF /* RouteAssembler.swift in Sources */,
+				C53738386B26FB22A99785DB /* RouteChecker.swift in Sources */,
 				661BF1886504D25BD22FD878 /* RouteList.swift in Sources */,
+				4183CBDC3B6A501B90A36AB4 /* RouteWalker.swift in Sources */,
 				B59A459AE5283EED1D3C5AF4 /* Shaders.swift in Sources */,
 				A7BD7A6629612A9F8D342F7E /* Simulation.swift in Sources */,
+				2173D476585A84C96148E537 /* StreetGraph.swift in Sources */,
+				44796739488F3A740E4D0AFA /* StreetOverlay.swift in Sources */,
+				6D7D36050BCDD847D6A75E98 /* StreetPicker.swift in Sources */,
 				093A7EDE7570DAEF6FA25DCE /* TileIndex.swift in Sources */,
 				4C004668846A7057A8E7E7C2 /* TileSpill.swift in Sources */,
 				A07D455DC8F905130C171917 /* TrackPlot.swift in Sources */,
@@ -639,7 +683,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Gullfire;
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
@@ -649,7 +693,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.github.big-shame-software.Gullfire";
 				SDKROOT = macosx;
 			};
@@ -757,7 +801,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Gullfire;
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
@@ -767,7 +811,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.github.big-shame-software.Gullfire";
 				SDKROOT = macosx;
 			};

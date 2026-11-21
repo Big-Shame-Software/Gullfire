@@ -20,6 +20,10 @@ struct HUDReadout: Equatable {
     var cruising = false
     /// The autopilot's height above the route, in metres (T and V). Zero is the route itself.
     var heightOffsetM = 0.0
+    /// While hand flying after T or V: the altitude being flown to, in feet. nil otherwise.
+    var heightTargetFt: Double?
+    /// The endless line ("ENDLESS LOOP 3 / STATE ST", or building), or "" while endless is off.
+    var endless = ""
 }
 
 /// Live performance numbers for the overlay.
@@ -76,6 +80,9 @@ final class AppModel {
     private static let mouseInvertKey = "mouseInvert"
     /// Mouse flight (J) is on. Not saved: the app never starts with the mouse taken.
     var mouseFlight = false
+    /// Pick mode (I) is on: the pointer is free, and a click flies the street under it. `pickLine` is its text (HUD and notice).
+    var pickMode = false
+    var pickLine = ""
     /// Stick travel per point of pointer movement, 0.25 to 4 (1 is the default). Saved.
     var mouseSensitivity: Double = 1.0 {
         didSet { Self.defaults.set(mouseSensitivity, forKey: Self.mouseSensitivityKey) }
@@ -95,6 +102,10 @@ final class AppModel {
     var hasGlider = false
     var perf = PerfReadout()
     var problem: String?
+    /// A short line of text over the flight (such as endless being unavailable), shown until `noticeUntil`
+    /// (CACurrentMediaTime seconds). The HUD shows it, or the notice view when the HUD is off.
+    var notice: String?
+    var noticeUntil = 0.0
 
     private(set) var city: CityPackage?
     var session = SessionLog()

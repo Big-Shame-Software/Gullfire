@@ -1,9 +1,35 @@
 import Foundation
 
+/// The tallest roof within 60 m of each sample of one route, worked out the first time it is asked for and kept. Lowering reads
+/// about fifty of these ahead of the aircraft on every control step, and they never change, so the app keeps one per route.
+public final class RoofCache: @unchecked Sendable {
+    private var values: [Double]
+    private let lock = NSLock()
+
+    /// `count` is the route's sample count.
+    public init(count: Int) {
+        values = Array(repeating: .nan, count: max(0, count))
+    }
+
+    func roof(index: Int, sample: Route.Sample, obstacles: ObstacleSource) -> Double {
+        lock.lock()
+        defer { lock.unlock() }
+        guard index >= 0, index < values.count else {
+            return Autopilot.roofHeight(east: sample.east, north: sample.north, radius: 60, obstacles: obstacles)
+        }
+        if values[index].isNaN {
+            values[index] = Autopilot.roofHeight(east: sample.east, north: sample.north, radius: 60, obstacles: obstacles)
+        }
+        return values[index]
+    }
+}
+
 /// The cruise autopilot. A pure function of the aircraft's position and the route,
 /// apart from the last route index, which only speeds up the search. It chases a point on the
 /// route ahead of the aircraft, so it rejoins after manual flight without a special case.
 public enum Autopilot {
+    /// How far (in route samples, 10 m each) the nearest-point search may stray from where the aircraft was last step.
+    public static let trackingWindow = 100
     /// Bank limit for cruise, radians (35°).
     public static let bankLimit = 35.0 * Double.pi / 180
     /// Lookahead: max(80 m, 2.5 s of travel).
@@ -29,9 +55,11 @@ public enum Autopilot {
     /// `heightOffset` raises (+) or lowers (−) the flight height over the route, subject to `targetAltitude`. Without
     /// `obstacles` every sample reads as a street, so the offset can only raise the aircraft.
     public static func control(for s: FlightState, route: Route, hint: Int?, tuning t: FlightTuning,
-                               heightOffset: Double = 0, obstacles: ObstacleSource? = nil) -> (control: ControlInput, index: Int) {
+                               heightOffset: Double = 0, obstacles: ObstacleSource? = nil,
+                               roofs: RoofCache? = nil) -> (control: ControlInput, index: Int) {
         guard route.count > 0 else { return (ControlInput(throttle: 0.5), 0) }
-        let here = route.nearestIndex(east: s.east, north: s.north, hint: hint)
+        // A narrow window (1 km either side of the last index): a route that passes over itself must not look nearer on its other leg.
+        let here = route.nearestIndex(east: s.east, north: s.north, hint: hint, window: Autopilot.trackingWindow)
         let ahead = Int((lookahead(speed: s.speed) / route.spacing).rounded())
         let aim = route.samples[(here + ahead) % route.count]
 
@@ -42,31 +70,58 @@ public enum Autopilot {
 
         // Pitch: altitude error at the target altitude over the aim point, full pitch at 60 m. With no obstacles the
         // roof is taken as the route's own altitude, which reads the sample as a street.
-        // Lowering is limited by the spare room over the whole stretch from here to well past the aim (250 m): the route's
-        // height minus the roofs minus 30 m, at its tightest. A street, or a tower the route climbs over, anywhere in that
-        // stretch takes the lowering down to zero, which is the route's own proven height. Raising needs no check.
+        // Lowering is limited by what the aircraft can still recover before it gets there. The aircraft can make up about
+        // 0.06 m of height per metre flown (the climb it has left after following the route's own ramps, which are drawn at
+        // 0.8 of its limit); the spare room at a point ahead is the route's height there minus the roofs minus 30 m. So the
+        // lowering allowed now is the smallest of (room + 0.06 * distance) over the next kilometre of route. A street, or a
+        // tower the route climbs over, takes the allowance to zero where it is, and the aircraft comes back up to the route's
+        // height smoothly as it approaches. Over open ground the full setting is allowed. Raising needs no check.
         var effective = max(heightOffset, 0)
         if let obstacles, heightOffset < 0 {
-            var room = Double.infinity
-            var highest = route.samples[here].altitude
-            let last = ahead + Int((250 / route.spacing).rounded())
+            var allowance = -heightOffset
+            let last = Int((1000 / route.spacing).rounded())
             var k = 0
             while k <= last {
-                let sm = route.samples[(here + k) % route.count]
-                let roof = roofHeight(east: sm.east, north: sm.north, radius: 60, obstacles: obstacles)
-                room = min(room, max(0, sm.altitude - roof - 30))
-                highest = max(highest, sm.altitude)
-                if room == 0 { break }
+                let index = (here + k) % route.count
+                let sm = route.samples[index]
+                let roof = roofs?.roof(index: index, sample: sm, obstacles: obstacles)
+                    ?? roofHeight(east: sm.east, north: sm.north, radius: 60, obstacles: obstacles)
+                let room = max(0, sm.altitude - roof - 30)
+                allowance = min(allowance, room + 0.06 * Double(k) * route.spacing)
+                if allowance <= 0 { break }
                 k += 2
             }
-            // A climb ahead (the route going over a tower) leaves no room to be lower: the aircraft cannot make up more
-            // than about 60 m of height (full pitch) on the way up. So the allowance shrinks as the climb grows.
-            let climb = highest - route.samples[here].altitude
-            effective = max(heightOffset, -min(room, max(0, 60 - climb)))
+            effective = -allowance
         }
         let targetAlt = aim.altitude + effective
         let altitudeError = targetAlt - s.altitude
-        let pitch = clamp(altitudeError / 60, -1, 1)
+        let pitch: Double
+        if t.autopilotFeedforward > 0 {
+            // Fly the profile where the aircraft is, climbing at the slope the route asks for between here and the aim, and
+            // correct what is left over. A proportional command on the altitude at the aim alone needs a steady lag of 15 to 20 m
+            // behind a ramp to produce the climb rate the ramp asks for (measured), which uses up the planned clearance.
+            // The altitudes are read between the route's 10 m samples, at the aircraft's own distance along the route, not at the
+            // nearest sample: at 31 m/s the nearest sample changes three times a second, and a step of up to 3 m in the reading
+            // would step the pitch command with it.
+            let here0 = route.samples[here]
+            let alongHere = min(max(((s.east - here0.east) * here0.tangentEast + (s.north - here0.north) * here0.tangentNorth) / route.spacing, -1), 1)
+            func altitudeAt(_ index: Double) -> Double {
+                let n = route.count
+                let lower = Int(index.rounded(.down))
+                let fraction = index - Double(lower)
+                let a = route.samples[((lower % n) + n) % n].altitude
+                let b = route.samples[(((lower + 1) % n) + n) % n].altitude
+                return a + (b - a) * fraction
+            }
+            let hereIndex = Double(here) + alongHere
+            let hereAlt = altitudeAt(hereIndex) + effective
+            let slopeAhead = max(1.0, Double(ahead) * t.autopilotFeedforwardWindow)
+            let slope = (altitudeAt(hereIndex + slopeAhead) + effective - hereAlt) / (slopeAhead * route.spacing)
+            let feedforward = t.autopilotFeedforward * atan(slope) / t.pitchLimit
+            pitch = clamp(feedforward + (hereAlt - s.altitude) / 40, -1, 1)
+        } else {
+            pitch = clamp(altitudeError / 60, -1, 1)
+        }
 
         // Speed: the waypoint speed, capped by the tightest curve in the next 300 m (8.4).
         var tightest = route.samples[here].radius
@@ -94,10 +149,23 @@ public struct HandBack: Sendable, Equatable {
     public var heading: Double
     /// The route sample the transit flies to, once it is chosen.
     public var aimIndex: Int?
-    public init(heading: Double) { self.heading = heading }
+    /// Where to start looking for the elevated point to fly to: the route sample the search begins at, instead of the one
+    /// nearest the aircraft. Entering a loop at a particular place (a picked street) sets it.
+    public var startIndex: Int?
+    public init(heading: Double, startIndex: Int? = nil) {
+        self.heading = heading
+        self.startIndex = startIndex
+    }
 }
 
 extension Autopilot {
+    /// A height boost for the minute after a hand-back onto a street loop ends, in metres: 60 m, settling to nothing over 60 s.
+    /// The loop's joins over dense towers allow a few metres of error, and an aircraft that has just arrived is rarely exactly on
+    /// the line. Raising is always safe (the 1.1 height rule), so it arrives high and settles onto the route's own height.
+    public static func entryBoost(secondsSinceHandBack t: Double) -> Double {
+        max(0, 60 * (1 - t / 60))
+    }
+
     /// Seconds-free check used at the hand-back: is anything within 30 m of the aircraft taller than altitude minus 10 m?
     public static func belowRoofs(_ s: FlightState, obstacles: ObstacleSource) -> Bool {
         roofHeight(east: s.east, north: s.north, radius: 30, obstacles: obstacles) > s.altitude - 10
@@ -136,7 +204,9 @@ extension Autopilot {
             // The roofs to clear: around the aircraft, and ahead along the held heading.
             var need = roofHeight(east: s.east, north: s.north, radius: 30, obstacles: obstacles)
             var d = 20.0
-            while d <= 300 {
+            // 800 m ahead, not 300: at the 20 degree pitch limit a climb over a 150 m tower needs about 400 m of run, and a
+            // climb that starts when the tower comes within 300 m does not get over it.
+            while d <= 800 {
                 need = max(need, roofHeight(east: s.east + d * sin(hb.heading), north: s.north + d * cos(hb.heading), radius: 20, obstacles: obstacles))
                 d += 20
             }
@@ -144,7 +214,7 @@ extension Autopilot {
             if s.altitude >= need - 1 {
                 hb.phase = .transit
                 // The first route sample from here on that is itself 30 m above the roofs around it.
-                var k = here
+                var k = hb.startIndex ?? here
                 var chosen: Int?
                 for _ in 0..<route.count {
                     let sm = route.samples[k]
@@ -185,12 +255,32 @@ extension Autopilot {
         }
 
         // Transit: over the roofs to the aim sample, then back to the usual chase.
-        guard let aimIndex = hb.aimIndex else { state = nil; return nil }
-        let aim = route.samples[aimIndex]
-        let dist = ((aim.east - s.east) * (aim.east - s.east) + (aim.north - s.north) * (aim.north - s.north)).squareRoot()
-        if dist < 120 && abs(aim.altitude - s.altitude) < 25 {
-            state = nil
-            return nil
+        guard var aimIndex = hb.aimIndex else { state = nil; return nil }
+        var aim = route.samples[aimIndex]
+        var dist = ((aim.east - s.east) * (aim.east - s.east) + (aim.north - s.north) * (aim.north - s.north)).squareRoot()
+        // The hand-back ends on the route's own height or above it (down to 5 m under), never well under it: the route's
+        // climbs over towers are drawn at the steepest the aircraft can follow, and an aircraft that joins 25 m under one
+        // cannot catch up and grazes the tower. It also ends only pointing along the route (within 26 degrees): an aircraft
+        // that arrives across the route swings about it at the join's tight turn radius and wanders off the line over the
+        // towers. When it arrives across, the aim moves on along the route to the next elevated sample (30 m above the roofs).
+        if dist < 120 && s.altitude >= aim.altitude - 5 && s.altitude - aim.altitude < 25 {
+            let along = atan2(aim.tangentEast, aim.tangentNorth)
+            if abs(wrapPi(along - s.heading)) < 0.45 {
+                state = nil
+                return nil
+            }
+            var k = aimIndex
+            var found: Int?
+            for _ in 0..<60 {
+                k = (k + 5) % route.count
+                let sm = route.samples[k]
+                if sm.altitude - roofHeight(east: sm.east, north: sm.north, radius: 30, obstacles: obstacles) >= 30 { found = k; break }
+            }
+            guard let next = found else { state = nil; return nil }
+            hb.aimIndex = next
+            aimIndex = next
+            aim = route.samples[next]
+            dist = ((aim.east - s.east) * (aim.east - s.east) + (aim.north - s.north) * (aim.north - s.north)).squareRoot()
         }
         // Altitude: the roofs along the straight line to the aim, plus 30 m, never below the route's own altitude there.
         var need = aim.altitude

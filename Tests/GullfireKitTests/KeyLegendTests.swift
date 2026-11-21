@@ -21,19 +21,24 @@ struct KeyLegendTests {
         #expect(others.allSatisfy { !$0.manualOnly })
     }
 
-    @Test func newHeightAndMouseKeysAreActionKeys() {
+    @Test func newHeightMouseAndEndlessKeysAreActionKeys() {
         #expect(KeyLegend.actionKeys.contains("t"))
         #expect(KeyLegend.actionKeys.contains("v"))
         #expect(KeyLegend.actionKeys.contains("j"))
+        #expect(KeyLegend.actionKeys.contains("u"))
+        #expect(KeyLegend.actionKeys.contains("i"))
     }
 
-    @Test func newHeightAndMouseKeysAreNamedInTheLegend() {
+    @Test func newHeightMouseAndEndlessKeysAreNamedInTheLegend() {
         let names = KeyLegend.namedKeys
         #expect(names.contains("t"))
         #expect(names.contains("v"))
         #expect(names.contains("j"))
+        #expect(names.contains("u"))
         let flight = KeyLegend.groups.first { $0.title == "FLIGHT" }
         #expect(flight?.entries.contains { $0.key == "T V" && $0.label == "HEIGHT" } == true)
+        #expect(flight?.entries.contains { $0.key == "U" && $0.label == "ENDLESS" && !$0.manualOnly } == true)
+        #expect(flight?.entries.contains { $0.key == "I" && $0.label == "PICK STREET" && !$0.manualOnly } == true)
         let fly = KeyLegend.groups.first { $0.title == "FLY" }
         #expect(fly?.entries.contains { $0.key == "J" && $0.label == "MOUSE" } == true)
     }

@@ -10,7 +10,7 @@ func fail(_ message: String, status: Int32) -> Never {
 }
 
 let arguments = CommandLine.arguments
-guard arguments.count == 2 || arguments.count == 3 else { fail("usage: gullfire-pack <city-directory> | gullfire-pack routes <city-directory>", status: 2) }
+guard arguments.count == 2 || arguments.count == 3 else { fail("usage: gullfire-pack <city-directory> | gullfire-pack routes <city-directory> | gullfire-pack loops <city-directory>", status: 2) }
 
 if arguments[1] == "routes" {
     // The River loop and its altitude profile. Reads the chains and the obstacle grid.
@@ -48,6 +48,43 @@ if arguments[1] == "routes" {
         print("stretches: \(profile.stretches.count)")
     } catch {
         fail("gullfire-pack routes: \(error)", status: 1)
+    }
+    exit(0)
+}
+if arguments[1] == "loops" {
+    // Marks which street stretches can start a loop, in each direction, by running the walker that endless flight uses.
+    // Reads and rewrites <city-directory>/streets.json (made by Tools/make_street_graph.py).
+    guard arguments.count == 3 else { fail("usage: gullfire-pack loops <city-directory>", status: 2) }
+    let city = URL(fileURLWithPath: arguments[2], isDirectory: true)
+    do {
+        let package = try CityPackage.open(directory: city)
+        guard var graph = try StreetGraph.load(from: city) else { fail("gullfire-pack loops: no streets.json in \(city.path)", status: 1) }
+        let settings = JoinSettings.standard(for: package.manifest)
+        let count = graph.stretches.count
+        let snapshot = graph
+        final class Marks: @unchecked Sendable {
+            let lock = NSLock()
+            var values: [[Bool]]
+            init(_ n: Int) { values = Array(repeating: [false, false], count: n) }
+            func set(_ i: Int, _ r: Int, _ v: Bool) { lock.lock(); values[i][r] = v; lock.unlock() }
+        }
+        let marks = Marks(count)
+        // A stretch works in a direction when the walker makes a loop from it with any of the first three seeds.
+        DispatchQueue.concurrentPerform(iterations: count * 2) { job in
+            let index = job / 2, reversed = job % 2 == 1
+            let id = snapshot.stretches[index].id
+            let works = (1...3).contains { seed in
+                RouteWalker.loop(graph: snapshot, obstacles: package, seed: UInt64(seed), joinSettings: settings,
+                                 startingWith: (id: id, reversed: reversed)) != nil
+            }
+            marks.set(index, reversed ? 1 : 0, works)
+        }
+        for i in 0..<count { graph.stretches[i].loops = marks.values[i] }
+        try JSONEncoder().encode(graph).write(to: city.appendingPathComponent(StreetGraph.fileName))
+        let any = graph.stretches.filter(\.canStartAny).count
+        print("loops: \(any) of \(count) stretches can start a loop (forward \(marks.values.filter { $0[0] }.count), reversed \(marks.values.filter { $0[1] }.count))")
+    } catch {
+        fail("gullfire-pack loops: \(error)", status: 1)
     }
     exit(0)
 }

@@ -11,6 +11,9 @@ struct FlatRoofs: ObstacleSource {
 /// Flight height: `Autopilot.targetAltitude` and the height offset in `Autopilot.control`.
 @Suite("Flight height")
 struct FlightHeightTests {
+    /// The proportional controller (no feedforward): these tests pin its exact numbers.
+    static var proportional: FlightTuning { var t = FlightTuning(); t.autopilotFeedforward = 0; return t }
+
     /// A 400 m square at a constant 100 m, flown at 60 knots.
     static func flatSquare() -> Route {
         Route(file: RouteFile(name: "flat square", closed: true, waypoints: [
@@ -60,7 +63,7 @@ struct FlightHeightTests {
         // Roofs at 80 m under a route at 100 m: a street. +30 asks for 130 m, so pitch is 30 / 60.
         let route = Self.flatSquare()
         let s = Self.onRoute(route)
-        let r = Autopilot.control(for: s, route: route, hint: 0, tuning: FlightTuning(),
+        let r = Autopilot.control(for: s, route: route, hint: 0, tuning: Self.proportional,
                                   heightOffset: 30, obstacles: FlatRoofs(height: 80))
         #expect(abs(r.control.pitch - 0.5) < 1e-9)
     }
@@ -69,13 +72,13 @@ struct FlightHeightTests {
         // Roofs at 0 m: the route at 100 m is open. −40 asks for 60 m, above the 30 m floor, so pitch is −40 / 60.
         let route = Self.flatSquare()
         let s = Self.onRoute(route)
-        let r = Autopilot.control(for: s, route: route, hint: 0, tuning: FlightTuning(),
+        let r = Autopilot.control(for: s, route: route, hint: 0, tuning: Self.proportional,
                                   heightOffset: -40, obstacles: FlatRoofs(height: 0))
         #expect(abs(r.control.pitch - (-40.0 / 60)) < 1e-9)
 
         // −100 asks for 0 m, under the 30 m floor, so the target is 30 m: the error is −70 m, past the 60 m full pitch.
         // Pitch clamps to −1.
-        let low = Autopilot.control(for: s, route: route, hint: 0, tuning: FlightTuning(),
+        let low = Autopilot.control(for: s, route: route, hint: 0, tuning: Self.proportional,
                                     heightOffset: -100, obstacles: FlatRoofs(height: 0))
         #expect(low.control.pitch == -1)
     }
@@ -84,7 +87,7 @@ struct FlightHeightTests {
         // With no obstacles every sample is a street, so a negative offset cannot take the aircraft under the route.
         let route = Self.flatSquare()
         let s = Self.onRoute(route)
-        let r = Autopilot.control(for: s, route: route, hint: 0, tuning: FlightTuning(), heightOffset: -50)
+        let r = Autopilot.control(for: s, route: route, hint: 0, tuning: Self.proportional, heightOffset: -50)
         #expect(r.control.pitch == 0)
     }
 
@@ -92,7 +95,8 @@ struct FlightHeightTests {
     /// altitude error at the aim sample, and the defaults equal the explicit zero offset.
     @Test(arguments: PackageTests.cities) func offsetZeroGivesTheSameControlOnTheRiverRoute(dir: URL) throws {
         let route = try RouteFlightTests.route("river", in: dir)
-        let t = FlightTuning()
+        var t = FlightTuning()
+        t.autopilotFeedforward = 0   // these tests pin the proportional controller's numbers
         for i in stride(from: 0, to: route.count, by: 37) {
             let sample = route.samples[i]
             let s = FlightState(east: sample.east, north: sample.north, altitude: sample.altitude - 12,
@@ -136,5 +140,30 @@ struct FlightHeightRouteTests {
         #expect(f.minClearance > 0)
         #expect(f.nudges == 0)
         #expect(f.outsideSeconds == 0)
+    }
+}
+
+/// The roof cache must change nothing but the speed.
+@Suite("Roof cache", .enabled(if: StreetRouteFiles.available))
+struct RoofCacheTests {
+    @Test(arguments: ["scenic", "river"]) func cachedLoweringGivesTheSameControl(name: String) throws {
+        let city = try CityPackage.open(directory: StreetRouteFiles.chicago)
+        let route = try Route.load(StreetRouteFiles.chicago.appendingPathComponent("routes/\(name).json"))
+        let t = FlightTuning()
+        let cache = RoofCache(count: route.count)
+        var checked = 0
+        for k in stride(from: 0, to: route.count, by: max(1, route.count / 150)) {
+            let a = route.samples[k], b = route.samples[(k + 1) % route.count]
+            let s = FlightState(east: a.east + 15, north: a.north - 10, altitude: a.altitude - 20,
+                                heading: atan2(b.east - a.east, b.north - a.north), speed: a.speed)
+            for offset in [-60.0, -25.0] {
+                let plain = Autopilot.control(for: s, route: route, hint: k, tuning: t, heightOffset: offset, obstacles: city)
+                let cached = Autopilot.control(for: s, route: route, hint: k, tuning: t, heightOffset: offset, obstacles: city, roofs: cache)
+                #expect(plain.control == cached.control)
+                #expect(plain.index == cached.index)
+                checked += 1
+            }
+        }
+        #expect(checked > 100)
     }
 }

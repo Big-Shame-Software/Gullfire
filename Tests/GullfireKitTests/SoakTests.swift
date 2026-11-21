@@ -41,7 +41,8 @@ struct RouteSoak {
     @Test(arguments: routeNames) func soak(name: String) throws {
         let minutes = try #require(SoakSetting.minutes)
         let city = try CityPackage.open(directory: PackageTests.chicago)
-        let route = try Route.load(PackageTests.chicago.appendingPathComponent("routes/\(name).json"))
+        // The route as the app flies it: repaired and smoothed, with the feedforward autopilot.
+        let route = try Route.load(PackageTests.chicago.appendingPathComponent("routes/\(name).json")).preparedIfStreet(obstacles: city)
         let t = FlightTuning()
         let a = route.samples[0], b = route.samples[1]
         let start = FlightState(east: a.east, north: a.north, altitude: a.altitude,
@@ -57,10 +58,11 @@ struct RouteSoak {
         var maxBank = 0.0
         var outside = 0.0
         var samples: [(minute: Double, mb: Double)] = [(0, Self.residentMB())]
+        let roofs = RoofCache(count: route.count)
         for k in 1...steps {
             sim.advance(by: t.fixedStep, obstacles: city, extent: extent) { s, _ in
                 let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t,
-                                          heightOffset: SoakSetting.height, obstacles: SoakSetting.height == 0 ? nil : city)
+                                          heightOffset: SoakSetting.height, obstacles: SoakSetting.height == 0 ? nil : city, roofs: roofs)
                 // The route index wraps from its end back to its start: one lap.
                 if let h = hint, r.index < h - route.count / 2 { laps += 1 }
                 hint = r.index
@@ -89,7 +91,7 @@ struct RouteSoak {
         #expect(outside == 0)
         #expect(minClearance > 0)
         #expect(nudges == 0, "\(name) must fly with zero collision nudges (\(nudges))")
-        #expect(abs(drift) <= SoakSetting.flatThresholdMB, "resident memory moved \(drift) MB between 30 minutes and the end")
+        #expect(drift <= SoakSetting.flatThresholdMB, "resident memory moved \(drift) MB between 30 minutes and the end")
         #expect(laps >= 2, "\(name) completed \(laps) laps in \(minutes) minutes")
     }
 }

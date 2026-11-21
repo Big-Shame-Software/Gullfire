@@ -46,6 +46,8 @@ public struct Route: Sendable {
     public let name: String
     public let samples: [Sample]
     public let spacing: Double
+    /// The waypoints the route was built from.
+    public let waypoints: [Waypoint]
 
     public var count: Int { samples.count }
     public var length: Double { Double(samples.count) * spacing }
@@ -53,7 +55,15 @@ public struct Route: Sendable {
     public init(file: RouteFile, spacing: Double = 10) {
         name = file.name
         self.spacing = spacing
+        waypoints = file.waypoints
         samples = Route.build(file.waypoints, spacing: spacing)
+    }
+
+    /// The route as the autopilot flies it: the same path with the altitude profile raised, never lowered, so that the avoidance
+    /// layer stays quiet along it (`ProfileRepair`) and its corners are rounded for the vertical acceleration of the aircraft
+    /// flying it (`ProfileSmoother`). Costs a fraction of a second; do it once per route, off the main thread for a new loop.
+    public func prepared(obstacles: ObstacleSource) -> Route {
+        Route(file: RouteFile(name: name, closed: true, waypoints: ProfileSmoother.smooth(waypoints: ProfileRepair.raise(waypoints: waypoints, obstacles: obstacles))), spacing: spacing)
     }
 
     public static func load(_ url: URL) throws -> Route {
@@ -61,14 +71,24 @@ public struct Route: Sendable {
         return Route(file: file)
     }
 
+    /// `prepared(obstacles:)` for the street routes, which fly between buildings and are the ones the avoidance layer trips on; Scenic
+    /// and River are hand-authored cruises over open ground, and raising their valleys would change what they are.
+    public func preparedIfStreet(obstacles: ObstacleSource) -> Route {
+        name.hasPrefix("Street") ? prepared(obstacles: obstacles) : self
+    }
+
     /// The index of the sample nearest `east`/`north`. With a `hint`, searches a window around it
     /// Without a hint, it searches the whole route.
-    public func nearestIndex(east: Double, north: Double, hint: Int? = nil) -> Int {
+    ///
+    /// The window is a number of samples either side of the hint (10 m each). The autopilot passes a narrow one: a route can
+    /// pass over itself (Scenic's 450 m leg crosses 6 m above its own 70 m leg, 221 samples along), and an aircraft just 20 m
+    /// to one side of its own leg is horizontally nearer the leg overhead. With the whole of a 3 km window to choose from the
+    /// search jumped there, the autopilot aimed at the other leg's altitude and pitched hard up until it jumped back.
+    public func nearestIndex(east: Double, north: Double, hint: Int? = nil, window: Int = 300) -> Int {
         var best = 0
         var bestD = Double.infinity
         let range: Range<Int>
         if let hint, count > 0 {
-            let window = 300
             range = (hint - window)..<(hint + window)
         } else {
             range = 0..<count

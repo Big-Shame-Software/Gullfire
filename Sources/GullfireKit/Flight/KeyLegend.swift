@@ -19,7 +19,7 @@ public enum KeyLegend {
     public static let heldKeys: Set<String> = ["w", "a", "s", "d", "q", "e"]
 
     /// Keys that act once on a press. Space is spelled "space".
-    public static let actionKeys: Set<String> = ["b", "p", "h", "k", "g", "f", "r", "c", "t", "v", "j", "space", "n", "m", ","]
+    public static let actionKeys: Set<String> = ["b", "p", "h", "k", "g", "f", "r", "c", "t", "v", "j", "u", "i", "space", "n", "m", ","]
 
     public static let groups: [Group] = [
         Group(title: "FLY", entries: [
@@ -34,6 +34,8 @@ public enum KeyLegend {
             Entry(key: "R", label: "LEVEL OFF", manualOnly: false),
             Entry(key: "C", label: "NEXT ROUTE", manualOnly: false),
             Entry(key: "T V", label: "HEIGHT", manualOnly: false),
+            Entry(key: "U", label: "ENDLESS", manualOnly: false),
+            Entry(key: "I", label: "PICK STREET", manualOnly: false),
         ]),
         Group(title: "VIEW", entries: [
             Entry(key: "B", label: "PALETTE", manualOnly: false),

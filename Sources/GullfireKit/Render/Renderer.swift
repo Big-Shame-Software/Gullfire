@@ -60,6 +60,10 @@ private final class FrameSlot {
     let aircraftUniforms: [MTLBuffer]
     let aircraftSolidTable: MTL4ArgumentTable
     let aircraftLineTable: MTL4ArgumentTable
+    /// The line overlays (Renderer.overlays): one segment buffer, uniform buffer and table each, filled by the renderer.
+    var overlayBuffers: [MTLBuffer] = []
+    var overlayUniforms: [MTLBuffer] = []
+    var overlayTables: [MTL4ArgumentTable] = []
 
     init(allocator: MTL4CommandAllocator, commandBuffer: MTL4CommandBuffer, uniforms: [MTLBuffer],
          solidTable: MTL4ArgumentTable, lineTables: [MTL4ArgumentTable],
@@ -72,6 +76,26 @@ private final class FrameSlot {
         self.aircraftUniforms = aircraftUniforms
         self.aircraftSolidTable = aircraftSolidTable
         self.aircraftLineTable = aircraftLineTable
+    }
+}
+
+/// A set of extra line segments drawn over the city, in render space (x east, y altitude, z minus north), six floats per
+/// segment. They are depth-tested against the buildings and drawn after the city's lines. Used for the street picker.
+public struct LineOverlay: Sendable, Equatable {
+    /// Six floats per segment: ax, ay, az, bx, by, bz.
+    public var segments: [Float]
+    /// Line width in pixels at 1440 lines of height (scaled with the window like the city's lines).
+    public var widthPx: Float
+    /// The line colour (the same in every palette).
+    public var color: SIMD3<Float>
+    /// 0 to 1 brightness of the line.
+    public var brightness: Float
+
+    public init(segments: [Float], widthPx: Float, color: SIMD3<Float> = BrandHex.rgb(BrandHex.sunshineYellow), brightness: Float = 1) {
+        self.segments = segments
+        self.widthPx = widthPx
+        self.color = color
+        self.brightness = brightness
     }
 }
 
@@ -120,6 +144,10 @@ public final class Renderer {
     public var culling = true
     /// The aircraft to draw this frame (set each frame by the app; nil draws none). Needs `loadAircraft` first.
     public var aircraft: AircraftPose?
+    /// Extra line layers to draw this frame (set each frame by the app; at most `maxOverlays`, each at most `overlayCapacity` segments, the rest are dropped).
+    public var overlays: [LineOverlay] = []
+    public static let maxOverlays = 3
+    public static let overlayCapacity = 40_000
     private var aircraftSolids: MTLBuffer?
     private var aircraftLines: MTLBuffer?
     private var aircraftTriangleCount = 0
@@ -259,9 +287,22 @@ public final class Renderer {
             aircraftSolidTable.setAddress(aircraftUniforms[0].gpuAddress, index: 1)
             let aircraftLineTable = try device.makeArgumentTable(descriptor: tableDescriptor)
             aircraftLineTable.setAddress(aircraftUniforms[1].gpuAddress, index: 1)
-            built.append(FrameSlot(allocator: allocator, commandBuffer: commandBuffer, uniforms: uniforms,
-                                   solidTable: solidTable, lineTables: lineTables, aircraftUniforms: aircraftUniforms,
-                                   aircraftSolidTable: aircraftSolidTable, aircraftLineTable: aircraftLineTable))
+            let slot = FrameSlot(allocator: allocator, commandBuffer: commandBuffer, uniforms: uniforms,
+                                 solidTable: solidTable, lineTables: lineTables, aircraftUniforms: aircraftUniforms,
+                                 aircraftSolidTable: aircraftSolidTable, aircraftLineTable: aircraftLineTable)
+            for _ in 0..<Renderer.maxOverlays {
+                guard let segmentBuffer = device.makeBuffer(length: Renderer.overlayCapacity * 24, options: .storageModeShared),
+                      let uniformBuffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride, options: .storageModeShared) else {
+                    throw RenderError.gpu("could not create an overlay buffer")
+                }
+                let table = try device.makeArgumentTable(descriptor: tableDescriptor)
+                table.setAddress(segmentBuffer.gpuAddress, index: 0)
+                table.setAddress(uniformBuffer.gpuAddress, index: 1)
+                slot.overlayBuffers.append(segmentBuffer)
+                slot.overlayUniforms.append(uniformBuffer)
+                slot.overlayTables.append(table)
+            }
+            built.append(slot)
         }
         slots = built
         milestones.append(("argument tables built", CACurrentMediaTime()))
@@ -270,7 +311,7 @@ public final class Renderer {
 
         let set = try device.makeResidencySet(descriptor: MTLResidencySetDescriptor())
         var allocations: [MTLAllocation] = [solidBuffer, lineBuffer]
-        for slot in built { allocations += slot.uniforms + slot.aircraftUniforms }
+        for slot in built { allocations += slot.uniforms + slot.aircraftUniforms + slot.overlayBuffers + slot.overlayUniforms }
         set.addAllocations(allocations + target.allocations)
         set.commit()
         queue.addResidencySet(set)
@@ -389,6 +430,21 @@ public final class Renderer {
                 as: Uniforms.self)
         }
 
+        // The overlays: segments copied into this slot's buffers.
+        var overlaySegments: [Int] = []
+        for (i, overlay) in overlays.prefix(Renderer.maxOverlays).enumerated() {
+            let count = min(overlay.segments.count / 6, Renderer.overlayCapacity)
+            overlaySegments.append(count)
+            guard count > 0 else { continue }
+            overlay.segments.withUnsafeBytes { raw in
+                slot.overlayBuffers[i].contents().copyMemory(from: raw.baseAddress!, byteCount: count * 24)
+            }
+            slot.overlayUniforms[i].contents().storeBytes(
+                of: Uniforms(vp: vp, viewport: viewport, widthPx: overlay.widthPx * Float(height) / 1440, bias: 0.004,
+                             color: SIMD4(overlay.color * overlay.brightness, 1), fadeDist: 0),
+                as: Uniforms.self)
+        }
+
         // Visibility and encode time (measurement is CPU only; nothing here changes what is drawn).
         let encodeStart = CACurrentMediaTime()
         let tiles = culling ? city.manifest.tiles : nil
@@ -466,6 +522,11 @@ public final class Renderer {
         if aircraft != nil, aircraftLines != nil {
             encoder.setArgumentTable(slot.aircraftLineTable, stages: [.vertex, .fragment])
             encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: aircraftSegmentCount)
+            calls += 1
+        }
+        for (i, count) in overlaySegments.enumerated() where count > 0 {
+            encoder.setArgumentTable(slot.overlayTables[i], stages: [.vertex, .fragment])
+            encoder.drawPrimitives(primitiveType: .triangle, vertexStart: 0, vertexCount: 6, instanceCount: count)
             calls += 1
         }
         encoder.endEncoding()

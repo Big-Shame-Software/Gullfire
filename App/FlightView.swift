@@ -12,8 +12,8 @@ struct FlightView: View {
             MetalView(model: model)
             if model.showHUD {
                 HUDView(model: model)
-            } else if model.mouseFlight {
-                MouseNoticeView(model: model)
+            } else if model.mouseFlight || model.pickMode || model.notice != nil || !model.hud.endless.isEmpty {
+                ModeNoticeView(model: model)
             }
             if model.showKeys {
                 KeyLegendView(model: model)

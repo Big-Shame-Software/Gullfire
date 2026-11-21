@@ -53,8 +53,8 @@ targets:
         INFOPLIST_KEY_CFBundleIconName: AppIcon
         INFOPLIST_KEY_NSHumanReadableCopyright: "N©! Big Shame Software 2026. No rights reserved."
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.simulation-games
-        MARKETING_VERSION: "1.1.0"
-        CURRENT_PROJECT_VERSION: "3"
+        MARKETING_VERSION: "1.2.0"
+        CURRENT_PROJECT_VERSION: "4"
 schemes:
   Gullfire:
     build:

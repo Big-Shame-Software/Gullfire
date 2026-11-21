@@ -114,6 +114,9 @@ final class FlightMTKView: MTKView {
     weak var model: AppModel?
     /// Keys that are not held controls (KeyLegend.actionKeys).
     var onAction: ((String) -> Void)?
+    /// Pick mode: the pointer's place in the view as normalised device coordinates (x right, y up, each -1...1), the view's
+    /// aspect (width / height), and whether it is a press (true) or a move (false).
+    var onPick: ((SIMD2<Double>, Double, Bool) -> Void)?
 
     /// Observers that give the mouse back: window lost key, app resigned active, app quitting, window gone.
     private var releaseObservers: [NSObjectProtocol] = []
@@ -136,24 +139,30 @@ final class FlightMTKView: MTKView {
         for token in releaseObservers { NotificationCenter.default.removeObserver(token) }
         releaseObservers = []
         guard let window else {
-            releaseMouse()   // left its window: the mouse must not stay taken
+            giveUpMouseAndPick()   // left its window: the mouse must not stay taken, and no pick goes on
             return
         }
         releaseObservers.append(NotificationCenter.default.addObserver(
             forName: NSWindow.didResignKeyNotification, object: window, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.releaseMouse() }
+            MainActor.assumeIsolated { self?.giveUpMouseAndPick() }
         })
         releaseObservers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didResignActiveNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.releaseMouse() }
+            MainActor.assumeIsolated { self?.giveUpMouseAndPick() }
         })
         releaseObservers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.releaseMouse() }
+            MainActor.assumeIsolated { self?.giveUpMouseAndPick() }
         })
+    }
+
+    /// Gives up the mouse and pick mode: the pointer comes back, and any pick ends. Used when focus is lost.
+    private func giveUpMouseAndPick() {
+        releaseMouse()
+        model?.flight?.cancelPick()
     }
 
     /// J: take the mouse for flight, or give it back.
@@ -185,7 +194,11 @@ final class FlightMTKView: MTKView {
 
     override func keyDown(with event: NSEvent) {
         // Esc always gives the mouse back, and does nothing else.
-        if event.keyCode == 53 { releaseMouse(); return }
+        if event.keyCode == 53 {
+            model?.flight?.cancelPick()
+            releaseMouse()
+            return
+        }
         guard !event.isARepeat else { return }   // key repeat is ignored; held keys come from key-down/up
         if event.keyCode == 49 { onAction?("space"); return }
         let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
@@ -206,7 +219,15 @@ final class FlightMTKView: MTKView {
                             control: event.modifierFlags.contains(.control))
     }
 
-    override func mouseMoved(with event: NSEvent) { addMouse(event) }
+    override func mouseMoved(with event: NSEvent) {
+        if model?.pickMode == true { reportPick(event, click: false) } else { addMouse(event) }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard model?.pickMode == true else { super.mouseDown(with: event); return }
+        reportPick(event, click: true)
+    }
+
     override func mouseDragged(with event: NSEvent) { addMouse(event) }
     override func rightMouseDragged(with event: NSEvent) { addMouse(event) }
     override func otherMouseDragged(with event: NSEvent) { addMouse(event) }
@@ -215,6 +236,15 @@ final class FlightMTKView: MTKView {
         // Trackpads report many small precise deltas; scale them down to the wheel's size.
         let wheel = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY * 0.1 : event.scrollingDeltaY
         input?.addMouse(dx: 0, dy: 0, wheel: Double(wheel))
+    }
+
+    /// Pick mode: the pointer's place in the view, as normalised device coordinates, to the renderer.
+    private func reportPick(_ event: NSEvent, click: Bool) {
+        let p = convert(event.locationInWindow, from: nil)
+        let w = Double(bounds.width), h = Double(bounds.height)
+        guard w > 0, h > 0 else { return }
+        let ndc = SIMD2(2 * Double(p.x) / w - 1, 2 * Double(p.y) / h - 1)
+        onPick?(ndc, w / h, click)
     }
 
     private func addMouse(_ event: NSEvent) {

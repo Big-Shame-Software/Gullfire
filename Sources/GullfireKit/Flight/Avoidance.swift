@@ -39,11 +39,14 @@ public enum Avoidance {
     public static func assess(_ s: FlightState, obstacles: ObstacleSource, tuning t: FlightTuning) -> AvoidanceResult {
         var result = AvoidanceResult()
         let limit = Double(s.altitude) - t.clearance
+        // The limit tau seconds ahead: the aircraft will be higher by what it is climbing now, as far as it is trusted.
+        let climb = max(0, s.speed * sin(s.pitch)) * t.avoidClimbCredit
+        func limitAhead(_ tau: Double) -> Double { limit + climb * tau }
         var blockedAhead = false
         let horizon = t.avoidLookahead.max() ?? 1
         for tau in t.avoidLookahead {
             let p = predict(s, after: tau, tuning: t)
-            if Double(obstacles.height(east: p.east, north: p.north)) > limit {
+            if Double(obstacles.height(east: p.east, north: p.north)) > limitAhead(tau) {
                 blockedAhead = true
                 // Sooner means harder: with the default 1, 2, 3 s this is 0.8, 0.53, 0.27.
                 result.pitch = max(result.pitch, t.avoidPitch * (horizon + 1 - tau) / horizon)
@@ -58,8 +61,8 @@ public enum Avoidance {
                 let p = predict(s, after: tau, tuning: t)
                 let h = s.heading + omega * tau
                 let rx = cos(h), ry = -sin(h)          // to the right of the direction of travel
-                if Double(obstacles.height(east: p.east + rx * t.wingMargin, north: p.north + ry * t.wingMargin)) > limit { rightBlocked = true }
-                if Double(obstacles.height(east: p.east - rx * t.wingMargin, north: p.north - ry * t.wingMargin)) > limit { leftBlocked = true }
+                if Double(obstacles.height(east: p.east + rx * t.wingMargin, north: p.north + ry * t.wingMargin)) > limitAhead(tau) { rightBlocked = true }
+                if Double(obstacles.height(east: p.east - rx * t.wingMargin, north: p.north - ry * t.wingMargin)) > limitAhead(tau) { leftBlocked = true }
             }
         }
         guard blockedAhead else {

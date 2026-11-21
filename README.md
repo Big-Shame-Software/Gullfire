@@ -8,7 +8,7 @@
 
 Gullfire is a native macOS app that flies a simulated aircraft over a real city, drawn as green hidden-line wireframes on black.
 
-In 1981 a movie imagined what a navigation computer would show a pilot coming in over a city at night: green lines on black, every building a box. We liked it enough to build it with real map data. Gullfire 1.0.0 is source only: there is no download, so you build it yourself. It needs macOS 27 on Apple silicon, Xcode 27, XcodeGen and uv. It does not do anything useful. I'm serious. It flies over Chicago, very carefully.
+In 1981 a movie imagined what a navigation computer would show a pilot coming in over a city at night: green lines on black, every building a box. We liked it enough to build it with real map data. Gullfire 1.2.0 is source only: there is no download, so you build it yourself. It needs macOS 27 on Apple silicon, Xcode 27, XcodeGen and uv. It does not do anything useful. I'm serious. It flies over Chicago, very carefully.
 
 <p align="center"><img src=".github/screenshots/c6-flight-scenic.png" alt="Gullfire flying the Scenic route over the Chicago map: tall towers drawn as green lines on black, with the key list at the bottom right." width="720"></p>
 
@@ -29,17 +29,20 @@ In 1981 a movie imagined what a navigation computer would show a pilot coming in
 - There is no map picker. Gullfire opens the one city it finds.
 - The glider is not included. Add your own model file to show it (see Adding a glider).
 - The game controller is supported, but it has not been tested on real hardware.
-- Mouse flight works with a mouse. It does not work with a trackpad yet.
 - The River route can drop to about 33 frames a second for a few seconds during a long full-screen flight. The cause is not known yet.
 - In full-screen 5K runs, memory use moves between about 630 MB and 930 MB. The cause is not known yet.
 - Something outside the app can briefly hide its window during a run. We have seen it, and have not found the cause.
 - VoiceOver reads Settings and the route announced when you press C. It does not yet read the route hint at launch or the key list.
+- Pressing U while low, at about 80 m over the tallest towers, can brush a roof once, with about 5 m clearance, before the aircraft climbs away.
+- Downtown, where the towers rule out most joins, few or no streets can be picked, so pick mode can show nothing there.
+- Picking a street, and endless flight with it, is an alpha feature. It works, and it will change. Expect streets that cannot be picked, and the odd rough join.
+- The ride is not smooth everywhere yet. We smoothed street runs and endless flight in 1.2.0. They still have small vertical bumps at the tops of climbs and dips. The Scenic route has jolts where the lap closes, and the River route has bumps we have not explained. Flying by hand is unchanged.
 - Nothing here has a date.
 
 ## Use
 
 1. Build the app. See Build below. You should see the build finish with no errors.
-2. Build Chicago's map with `Tools/build_chicago.sh`. See Getting a city below. You should see six steps print in turn, with each one's time.
+2. Build Chicago's map with `Tools/build_chicago.sh`. See Getting a city below. You should see seven steps print in turn, with each one's time.
 3. Open the app: `open DerivedData/Build/Products/Release/Gullfire.app`. You should see the flight over Chicago, starting on the Scenic route, with the key list at the bottom right.
 
 Start the app and it flies the Scenic route on autopilot. The list of routes appears at the bottom of the window at launch, with the line PRESS C FOR THE NEXT ROUTE. Press C to change the route.
@@ -54,6 +57,8 @@ Start the app and it flies the Scenic route on autopilot. The list of routes app
 | R | Level off |
 | T / V | Height up / down |
 | J | Mouse flight on or off |
+| I | Pick a street to fly, then carry on as endless flight (alpha). I or Esc cancels |
+| U | Endless flight on or off |
 | C | Next route, and show the list of routes at the bottom of the window |
 | B | Cycle the colour scheme (Default, Brand, Lime) |
 | P | Show or hide the performance overlay |
@@ -71,9 +76,21 @@ With no music folder or file set, M plays the demo piece, Erik Satie's *Gymnopé
 
 ### Flight height and mouse flight
 
-T and V raise and lower the autopilot's flight height in 10 m steps, from 60 m below to 120 m above the route's own height. The HUD shows it as HEIGHT +30 M, or HEIGHT 0 M at the route's own height. On a street run the height can only go up from the route's own height. On open routes it can go down, but never below the roofs plus 30 m. The height resets to 0 when you change route with C. It applies to cruise; the climb-out after Space ignores it.
+In cruise, T and V raise and lower the autopilot's flight height in 10 m steps, from 60 m below to 120 m above the route's own height. The HUD shows it as HEIGHT +30 M, or HEIGHT 0 M at the route's own height. Lowering is limited by what the aircraft can recover before the roofs and towers ahead. A street run never goes below its own height. Over open ground the full setting is allowed. The height resets to 0 when you change route with C.
 
-J turns mouse flight on and off. Moving the mouse right banks right, and moving it forward, away from you, puts the nose down. The scroll wheel changes throttle. The stick eases back to centre slowly when the mouse stops. Turning mouse flight on switches to manual flight. The pointer is hidden and held while it is on. Esc always gives it back, and so does switching to another window or app. The HUD says MOUSE ON / ESC TO RELEASE, or a small notice does when the HUD is off. Settings (View tab) has Mouse flight sensitivity and Invert pitch.
+When you fly by hand, T and V set a target altitude 10 m above or below the aircraft, or above or below the last target. The aircraft climbs or descends to it. Touching the pitch keys or the mouse drops the target. The HUD shows it as HEIGHT TARGET nnnn FT.
+
+J turns mouse flight on and off. Moving the mouse right banks right, and moving it forward, away from you, puts the nose down. The scroll wheel changes throttle. The stick eases back to centre slowly when the mouse stops. Turning mouse flight on switches to manual flight by itself, so Space is not needed first. The pointer is hidden and held while it is on. Esc always gives it back, and so does switching to another window or app. The HUD says MOUSE ON / ESC TO RELEASE, or a small notice does when the HUD is off. Settings (View tab) has Mouse flight sensitivity and Invert pitch.
+
+### Endless flight and picking a street
+
+Picking a street is an alpha feature. It works, but expect gaps and rough edges: streets that cannot be picked, a join that is not tidy, and a ride that is not as smooth as we want (see What it doesn't do yet).
+
+U starts endless flight. The aircraft flies loops made from the city's streets, one after another, with no input. It starts from cruise. If you are flying by hand, it switches to cruise first, then climbs over the roofs to join. The next loop is built in the background. The swap comes about a lap after you start it, when the aircraft reaches the end of the stretch it is on. The HUD shows `ENDLESS LOOP n / <street>` and `NEXT LOOP IN m:ss`. Press U again, or C, to stop. Space still switches between manual flight and cruise, and keeps endless flight on. In cruise the height keys do not change the climb-out that follows Space. Entering endless flight or a picked street is always a climb over the roofs first, then a join. For the first minute after it, the aircraft flies up to 60 m higher than the route and settles down.
+
+Without a street graph in the city package, U says so and does nothing else. See Street graph below.
+
+I lets you pick a street. The pointer is free. Move it over the flight view and the HUD names the street under it. Click to fly that street, then carry on as endless flight. Only streets that can start a loop are offered. The build marks them, and about half of Chicago's streets qualify, so none is offered where the towers rule out the joins. While pick mode is on, those streets are drawn as yellow lines over the city: thin for each one within about 4 km, thick for the one under the pointer, thickest for the one you picked. A click snaps to the nearest of them within 1.5 km. A click with none that near finds no street, and so does a click on the sky or the lake. If a street still cannot start a loop, the nearest one that can is flown and the HUD says which. Buildings in front hide them. The mode stays on after a click, so you can pick another street. I or Esc leaves it, and the lines go. Pick mode and mouse flight never run together.
 
 ### About and the credit line
 
@@ -89,7 +106,7 @@ Run this one command from the project folder:
 Tools/build_chicago.sh
 ```
 
-It needs the network once, to download the map data, plus uv and Xcode 27. Later runs keep the download. It runs six steps and prints each one with its time: it fetches the Overture and OpenStreetMap data, packs the city package, writes the Scenic and River routes, writes the street routes for seeds 1 to 6, and installs the package where Gullfire looks for it.
+It needs the network once, to download the map data, plus uv and Xcode 27. Later runs keep the download. It runs seven steps and prints each one with its time. It fetches the Overture and OpenStreetMap data and packs the city package. It writes the Scenic and River routes, then the street routes for seeds 1 to 6, then the street graph. Next it marks which of those streets can start a loop. The last step installs the package where Gullfire looks for it.
 
 On one Mac (Apple silicon, macOS 27, Overture release 2026-10-21.0), the first run from an empty `Cities` folder took about 50 seconds. The fetch step, which includes the download, took 17 seconds of that; packing took 14 seconds; the street routes took 17 seconds. Later runs, with the data already downloaded, took about 20 seconds. The package is about 41 MB. The `raw` folder beside it holds the downloaded input, 56 MB. The app does not need it, and the install leaves it out, but the street-route tool reads it, so keep it in `Cities/Chicago` if you want more routes.
 
@@ -112,6 +129,18 @@ uv run --with numpy --with shapely Tools/make_street_routes.py Cities/Chicago --
 ```
 
 <p align="center"><img src=".github/screenshots/c6-flight-street1.png" alt="Gullfire flying low along a street on the street-1 route, with wireframe buildings on either side and the key list on the right." width="720"></p>
+
+### Street graph
+
+A city package can carry an optional file, `streets.json`. It lists the open straight street stretches already checked clear at 15 m, with their names and class. Endless flight and picking a street need it. `Tools/build_chicago.sh` writes it with the other package files. A package without it flies exactly as before. The app never reads the raw map files.
+
+`Tools/make_street_graph.py` writes the file. Run it on the city folder, the one that holds the package and its `raw` folder:
+
+```bash
+uv run --offline --with numpy --with shapely python -I Tools/make_street_graph.py <city folder>
+```
+
+The script reads the `raw` folder, so keep it in place, as the street routes do.
 
 ### Adding a glider
 

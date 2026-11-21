@@ -10,7 +10,9 @@
 #   3. write the Scenic route (Tools/make_routes.py)
 #   4. write the River route (gullfire-pack routes)
 #   5. write the street routes for seeds 1 to 6
-#   6. install the package (rsync, without raw/) into the app's folder
+#   6. write the street graph (streets.json), which endless flight and picking a street use
+#   7. mark which of its streets can start a loop (gullfire-pack loops)
+#   8. install the package (rsync, without raw/) into the app's folder
 #
 # The build is Cities/Chicago in this project (git-ignored). The install goes to
 # ~/Library/Application Support/Gullfire/Cities/Chicago unless --dest or GULLFIRE_INSTALL_DIR
@@ -126,16 +128,22 @@ command -v uv >/dev/null || { echo "uv is needed (https://docs.astral.sh/uv/)" >
 command -v swift >/dev/null || { echo "swift is needed (Xcode 27)" >&2; exit 1; }
 command -v rsync >/dev/null || { echo "rsync is needed (it ships with macOS)" >&2; exit 1; }
 
-run_step "1/6 Fetch the Chicago map data (network)" \
+run_step "1/7 Fetch the Chicago map data (network)" \
     uv run --with overturemaps --with numpy --with shapely Tools/fetch_city.py chicago
-run_step "2/6 Pack the city package" \
+run_step "2/7 Pack the city package" \
     swift run -c release gullfire-pack "$CITY_DIR"
-run_step "3/6 Write the Scenic route" \
+run_step "3/7 Write the Scenic route" \
     python3 Tools/make_routes.py "$CITY_DIR"
-run_step "4/6 Write the River route" \
+run_step "4/7 Write the River route" \
     swift run -c release gullfire-pack routes "$CITY_DIR"
-run_step "5/6 Write the street routes, seeds 1 to 6" \
+run_step "5/7 Write the street routes, seeds 1 to 6" \
     uv run --with numpy --with shapely Tools/make_street_routes.py "$CITY_DIR" --seeds 1 2 3 4 5 6
+
+run_step "6/7 Write the street graph" \
+    uv run --with numpy --with shapely Tools/make_street_graph.py "$CITY_DIR"
+
+run_step "7/7 Mark the streets that can start a loop" \
+    swift run -c release gullfire-pack loops "$CITY_DIR"
 
 TOTAL_KB=$(du -sk "$CITY_DIR" | awk '{print $1}')
 RAW_KB=$(du -sk "$CITY_DIR/raw" 2>/dev/null | awk '{print $1}' || echo 0)

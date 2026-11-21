@@ -2,6 +2,30 @@
 
 All notable changes to Gullfire are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Gullfire uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-19
+
+### Added
+
+- Street graph: a city package can carry an optional `streets.json`, listing the open straight street stretches already checked clear at 15 m, with their names and class. `Tools/make_street_graph.py` writes it. A package without it flies as before.
+- Endless flight: U flies loops made from the city's streets, one after another, with no input. Without a street graph, U says so and does nothing else. Press U again, or C, to stop.
+- Pick a street (alpha): I, then click a street in the flight view to fly it as endless flight. While pick mode is on, the streets you can follow are drawn as yellow lines: thin for each street nearby, thick for the one under the pointer, thickest for the one picked. The mode stays on after a click, so you can pick another. Only streets that can start a loop are offered; the build marks them. If a clicked street still cannot start a loop, the nearest one that can is flown. I or Esc leaves pick mode.
+- Height keys T and V work when flying by hand. They set a target altitude 10 m above or below the aircraft, or the last target, and the HUD shows it as HEIGHT TARGET.
+
+### Changed
+
+- Mouse flight works with a trackpad as well as a mouse. We tested both by hand; the cause of the earlier failure was never found.
+- J turns mouse flight on and switches to manual flight by itself. Space is no longer needed first.
+- Lowering in cruise is limited by what the aircraft can recover before the roofs and towers ahead. A street run never goes below its own height. Over open ground the full setting is allowed.
+- Smoother flight on street runs and endless flight. The autopilot now follows the slope of the route ahead, and the street routes are raised and rounded in memory when they load (the route files are not changed). Scenic and River are flown as authored.
+- Entering endless flight or a picked street is always a climb over the roofs first, then a join. For the first minute after it, the aircraft flies up to 60 m higher than the route and settles down.
+
+### Known issues
+
+- Pressing U while low, at about 80 m over the tallest towers, can brush a roof once, with about 5 m clearance, before the aircraft climbs away.
+- Downtown, where the towers rule out most joins, few or no streets can be picked, so pick mode can show nothing there.
+- Picking a street, and endless flight with it, is an alpha feature. Expect streets that cannot be picked and the odd rough join.
+- Flight is not smooth everywhere yet. Street runs and endless flight still have small vertical bumps at the tops of climbs and dips. The Scenic route has jolts where the lap closes. The River route has bumps we have not explained.
+
 ## [1.1.0] - 2026-11-18
 
 ### Added

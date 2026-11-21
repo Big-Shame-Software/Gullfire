@@ -69,6 +69,18 @@ public struct FlightTuning: Sendable, Equatable {
     public var avoidRoll = 0.8
     /// Avoidance pitch strength at the nearest sample (0…1 of full pitch).
     public var avoidPitch = 0.8
+    /// How much of the climb the aircraft is making now the look-ahead counts on: the predicted altitude 1, 2 or 3 s ahead is
+    /// the current altitude plus this fraction of (vertical speed times the time). The routes plan their climbs over the
+    /// roofs, and a look-ahead that assumes level flight takes every planned ramp for a collision course. 0 is the old rule (and
+    /// the default until the soaks have proved a credit: see Spikes/LEVELING_PLAN.md).
+    public var avoidClimbCredit = 0.0
+    /// How much of the route's own slope the autopilot adds to its pitch command (0 is the old pure proportional controller,
+    /// 1 is full feedforward, the default). It assumes the route was prepared (`Route.prepared`): feedforward on a profile with sharp
+    /// corners follows each corner crisply. With proportional control alone the aircraft climbs a ramp only by lagging 15 to 20 m behind it.
+    public var autopilotFeedforward = 1.0
+    /// How far ahead the feedforward looks for the route's slope, as a multiple of the autopilot's look-ahead (1 is the aim point).
+    /// A longer window starts a climb or a level-off earlier and rounds the corners of the profile.
+    public var autopilotFeedforwardWindow = 1.0
     /// Avoidance wing check: how far either side of the path to look, metres (0 turns it off). Buildings beside the
     /// path, not only on it, steer the aircraft away: needed in a street, where the walls are 9 to 12 m from the line.
     public var wingMargin = 6.0

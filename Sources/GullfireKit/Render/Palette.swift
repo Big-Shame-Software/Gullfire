@@ -40,6 +40,8 @@ public enum BrandHex {
     public static let crtGreen: UInt32 = 0x0E2E1C
     /// Owner's pick from the yellow candidates. Not a brand token.
     public static let paleLime: UInt32 = 0xDDFF55
+    /// Sunshine Yellow from the Big Shame styleguide: highlights. The street picker's overlay lines, in every palette.
+    public static let sunshineYellow: UInt32 = 0xFFD43B
     /// Water in all three palettes: the macOS system blue (#007AFF, sRGB), taken from the keyboard
     /// focus ring as the owner measured it (Display P3 0.204 / 0.471 / 0.965). Replaces cyan #5CE1FF.
     public static let water: UInt32 = 0x007AFF
