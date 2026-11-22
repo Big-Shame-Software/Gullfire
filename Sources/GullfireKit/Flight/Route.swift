@@ -56,7 +56,7 @@ public struct Route: Sendable {
         name = file.name
         self.spacing = spacing
         waypoints = file.waypoints
-        samples = Route.build(file.waypoints, spacing: spacing)
+        samples = Route.build(file.waypoints, spacing: spacing, arcAltitude: Route.interpolatesAltitudeByArc(name))
     }
 
     /// The route as the autopilot flies it: the same path with the altitude profile raised, never lowered, so that the avoidance
@@ -107,7 +107,12 @@ public struct Route: Sendable {
 
     // MARK: - Construction
 
-    static func build(_ wp: [Waypoint], spacing: Double) -> [Sample] {
+    /// Scenic and River are written with every waypoint's altitude set for a gradient along the line between waypoints, so they
+    /// are flown with the altitude linear in arc length. Street and endless loops keep the spline-parameter interpolation their
+    /// profile repair and smoothing were tuned and soaked with (changing it made their smoothness numbers worse).
+    public static func interpolatesAltitudeByArc(_ name: String) -> Bool { name == "Scenic" || name == "River" }
+
+    static func build(_ wp: [Waypoint], spacing: Double, arcAltitude: Bool = false) -> [Sample] {
         let n = wp.count
         guard n >= 4 else { return [] }
         // Dense points along each closed segment, with altitude and speed interpolated.
@@ -115,12 +120,24 @@ public struct Route: Sendable {
         let perSegment = 200
         for i in 0..<n {
             let p0 = wp[(i - 1 + n) % n], p1 = wp[i], p2 = wp[(i + 1) % n], p3 = wp[(i + 2) % n]
+            // Altitude and speed go linearly with the spline parameter, or (arcAltitude) with the arc length along the segment.
+            // The centripetal spline moves unevenly in its parameter where a long segment meets short ones, and a parameter-linear
+            // altitude then climbs several times faster than the waypoints say (the River fork junction: 1.17 against 0.27).
+            var pts: [(e: Double, n: Double)] = []
+            pts.reserveCapacity(perSegment + 1)
+            for k in 0...perSegment { pts.append(catmullRom(p0, p1, p2, p3, Double(k) / Double(perSegment))) }
+            var arc = [0.0]
+            for k in 1...perSegment {
+                let a = pts[k - 1], b = pts[k]
+                arc.append(arc[k - 1] + ((b.e - a.e) * (b.e - a.e) + (b.n - a.n) * (b.n - a.n)).squareRoot())
+            }
+            let segmentLength = arc[perSegment]
             for k in 0..<perSegment {
-                let t = Double(k) / Double(perSegment)
-                let p = catmullRom(p0, p1, p2, p3, t)
-                let alt = p1.alt + (p2.alt - p1.alt) * t
-                let spd = (p1.speedKt + (p2.speedKt - p1.speedKt) * t) * FlightTuning.knotsToMetresPerSecond
-                dense.append((p.e, p.n, alt, spd))
+                let linear = Double(k) / Double(perSegment)
+                let u = arcAltitude && segmentLength > 0 ? arc[k] / segmentLength : linear
+                let alt = p1.alt + (p2.alt - p1.alt) * u
+                let spd = (p1.speedKt + (p2.speedKt - p1.speedKt) * u) * FlightTuning.knotsToMetresPerSecond
+                dense.append((pts[k].e, pts[k].n, alt, spd))
             }
         }
         // Arc length along the dense points, then resample every `spacing` metres.

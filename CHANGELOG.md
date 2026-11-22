@@ -2,6 +2,26 @@
 
 All notable changes to Gullfire are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Gullfire uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-11-22
+
+### Changed
+
+- On the Brand palette the key list's panel has the same tinted fill as the route list, instead of a black panel. The other palettes are unchanged.
+
+### Fixed
+
+- Pressing U (endless flight), picking a street with I, or taking over from low among tall buildings no longer brushes a roof. The aircraft now climbs above every roof within reach of a turn before it starts to join. In our test, entry climbed about 55 m higher and takes a little longer. In a test of 1,176 start positions around the Loop, flown for 30 seconds each, no start that a climb could clear brushed a roof. Before this fix, 18 did.
+- An entry that arrives high above its join point now aims at a point it can glide down to. If it flies over the aim too high, it moves on to a farther one instead of circling. In our test of 1,176 start positions around the Loop, flown for two minutes each, roof brushes among the starts that a climb could clear fell from 62 in 1.2.0 to 1.
+- Scenic and River no longer jolt where each lap closes. The River lap used to drop 230 m in 60 m; it now descends gradually. Scenic's first stretch no longer drops 170 m over 390 m. Scenic also climbs about 230 m over the last 1.7 km of the river stretch, before the tall towers. Both routes fly the same ground track as before. Routes you built with 1.2.0 keep their old files until you build the city again with `Tools/build_chicago.sh`.
+- The key list (K) scrolls in a short window instead of running off the window.
+
+### Known issues
+
+- In our test of 1,176 start positions around the Loop, flown for two minutes each, one entry circled a block and brushed a roof after about 75 seconds (62 did in 1.2.0). Seven entries took longer than two minutes to join; all joined within 2 minutes 32 seconds. Entering from too high can still make the aircraft circle before it joins.
+- Downtown, where the towers rule out most joins, few or no streets can be picked, so pick mode can show nothing there.
+- Picking a street, and endless flight with it, is an alpha feature. Expect streets that cannot be picked and the odd rough join.
+- Flight is not smooth everywhere yet. Street runs and endless flight still have small vertical bumps at the tops of climbs and dips. The River route still has a few small bumps. They are smaller, and we have not found what causes them.
+
 ## [1.2.0] - 2026-11-19
 
 ### Added

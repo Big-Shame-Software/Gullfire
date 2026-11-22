@@ -12,7 +12,8 @@ import Testing
 ///     GULLFIRE_SMOOTHNESS=1 swift test --filter SmoothnessTests
 ///
 /// GULLFIRE_SMOOTH_SECONDS sets the simulated length per flight (default 420). GULLFIRE_SMOOTH_OUT, if set, also
-/// writes the table as Markdown to that path.
+/// writes the table as Markdown to that path. GULLFIRE_SMOOTH_DUMP=<route name or all> prints one DUMP line per spike on
+/// that route (time, position, route slope and curvature, commanded pitch and roll, flags, speed limit).
 enum Smoothness {
     struct Sample {
         var t: Double
@@ -24,6 +25,15 @@ enum Smoothness {
         var boundary: Bool
         var nudged: Bool
         var clamped: Bool
+        // Filled in by fly() only, for the spike dump (GULLFIRE_SMOOTH_DUMP). Zero or nil in the unit tests.
+        var east: Double = 0
+        var north: Double = 0
+        var speed: Double = 0
+        /// The autopilot's own command, before the avoidance and boundary layers change it, in degrees.
+        var commandedPitchDeg: Double = 0
+        var commandedBankDeg: Double = 0
+        /// The curve cap on speed (m/s) when it is below the waypoint speed the autopilot aims at; nil otherwise.
+        var speedLimit: Double? = nil
     }
 
     enum Cause: String, CaseIterable {
@@ -35,6 +45,8 @@ enum Smoothness {
         var az: Double
         var routeIndex: Int
         var cause: Cause
+        /// The sample index of the peak, into the report's `samples`.
+        var index = 0
     }
 
     struct Report {
@@ -46,6 +58,7 @@ enum Smoothness {
         var verticalSpeedP95: Double
         var spikes: [Spike]
         var startSpikes: [Spike]
+        var samples: [Sample] = []
     }
 
     /// Samples are taken this often, seconds.
@@ -111,7 +124,7 @@ enum Smoothness {
             while j + 1 < n - 1 && abs(az[j + 1]) > spikeThreshold { j += 1 }
             var peak = i
             for k in i...j where abs(az[k]) > abs(az[peak]) { peak = k }
-            let spike = Spike(t: samples[peak].t, az: az[peak], routeIndex: samples[peak].routeIndex, cause: cause(at: peak))
+            let spike = Spike(t: samples[peak].t, az: az[peak], routeIndex: samples[peak].routeIndex, cause: cause(at: peak), index: peak)
             if spike.cause == .start { startSpikes.append(spike) } else { spikes.append(spike) }
             i = j + 1
         }
@@ -123,7 +136,61 @@ enum Smoothness {
                       rollRateP95: percentile(rollRate, 0.95), rollRateP99: percentile(rollRate, 0.99),
                       rollRateMax: rollRate.max() ?? 0,
                       verticalSpeedP95: percentile(vz, 0.95),
-                      spikes: spikes, startSpikes: startSpikes)
+                      spikes: spikes, startSpikes: startSpikes, samples: samples)
+    }
+
+    /// One line per spike on `route`: what the aircraft, the autopilot and the route were doing at the spike's peak sample.
+    /// The route's slope and curvature are read from its own samples at the nearest index.
+    static func dumpLines(name: String, route: Route, report r: Report) -> [String] {
+        let s = r.samples
+        let n = s.count
+        let rc = route.count
+        guard rc > 0, n > 2 else { return ["DUMP \(name): no samples"] }
+        func wrap(_ i: Int) -> Int { ((i % rc) + rc) % rc }
+        func slope(_ i: Int) -> Double {
+            (route.samples[wrap(i + 1)].altitude - route.samples[wrap(i - 1)].altitude) / (2 * route.spacing)
+        }
+        func heading(_ i: Int) -> Double {
+            let sm = route.samples[wrap(i)]
+            return atan2(sm.tangentEast, sm.tangentNorth)
+        }
+        func curvatureDegPerM(_ i: Int) -> Double {
+            wrapPi(heading(i + 1) - heading(i - 1)) / (2 * route.spacing) * 180 / Double.pi
+        }
+        let hundredM = Int((100 / route.spacing).rounded())
+        func f(_ x: Double, _ fmt: String) -> String { String(format: fmt, x) }
+        func yn(_ b: Bool) -> String { b ? "yes" : "no" }
+
+        var lines = ["DUMP \(name): \(r.spikes.count) spikes (route \(rc) samples, \(f(route.length, "%.0f")) m)"]
+        for sp in r.spikes {
+            let p = sp.index
+            let x = s[p]
+            let idx = x.routeIndex
+            let lo = max(0, p - windowSamples), hi = min(n - 1, p + windowSamples)
+            let win = s[lo...hi]
+            let pitchRate = (s[p + 1].pitchDeg - s[p - 1].pitchDeg) / (2 * sampleInterval)
+            let limit = x.speedLimit.map { "curve cap \(f($0, "%.1f")) m/s" } ?? "none"
+            let parts: [String] = [
+                "DUMP \(name) t=\(f(x.t, "%.1f")) s",
+                "route index \(idx)/\(rc)",
+                "pos E \(f(x.east, "%.1f")) N \(f(x.north, "%.1f"))",
+                "alt \(f(x.altitude, "%.2f")) m",
+                "speed \(f(x.speed, "%.2f")) m/s",
+                "az \(f(sp.az, "%+.2f")) m/s2",
+                "pitch \(f(x.pitchDeg, "%+.2f")) deg, bank \(f(x.bankDeg, "%+.2f")) deg",
+                "pitch rate \(f(pitchRate, "%+.1f")) deg/s",
+                "route slope \(f(slope(idx), "%+.4f")) (-100 m \(f(slope(idx - hundredM), "%+.4f")), +100 m \(f(slope(idx + hundredM), "%+.4f")))",
+                "route curvature \(f(curvatureDegPerM(idx), "%+.3f")) deg/m",
+                "cmd pitch \(f(x.commandedPitchDeg, "%+.1f")) deg, roll \(f(x.commandedBankDeg, "%+.1f")) deg",
+                "at peak: avoidance \(yn(x.avoidance)), boundary \(yn(x.boundary)), nudge \(yn(x.nudged)), clamp \(yn(x.clamped))",
+                "in window: avoidance \(yn(win.contains { $0.avoidance })), boundary \(yn(win.contains { $0.boundary })), nudge \(yn(win.contains { $0.nudged })), clamp \(yn(win.contains { $0.clamped }))",
+                "speed limit \(limit)",
+                "speed change over window \(f(s[hi].speed - s[lo].speed, "%+.2f")) m/s",
+                "cause \(sp.cause.rawValue)",
+            ]
+            lines.append(parts.joined(separator: " | "))
+        }
+        return lines
     }
 
     /// Flies `route` headless for `seconds` on the real simulator and autopilot, as the soak tests do, and measures it.
@@ -136,6 +203,8 @@ enum Smoothness {
         var hint: Int? = 0
         var lastIdx = 0
         var nudgesSeen = sim.nudges
+        var lastCmd = ControlInput()
+        var lastLimit: Double?
         var samples: [Sample] = []
         let every = Int((sampleInterval / t.fixedStep).rounded())
         let extent = city.manifest.extentM
@@ -145,6 +214,19 @@ enum Smoothness {
                 let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t)
                 hint = r.index
                 lastIdx = r.index
+                lastCmd = r.control
+                // The speed the autopilot is held to: the curve cap over the next 300 m (Autopilot.control). Recomputed here
+                // only to report it; it counts as a limit in force when it is below the waypoint speed it aims at.
+                lastLimit = nil
+                if route.count > 0 {
+                    var tightest = route.samples[r.index].radius
+                    for k in 0...Int(300 / route.spacing) {
+                        tightest = min(tightest, route.samples[(r.index + k) % route.count].radius)
+                    }
+                    let cap = (t.gravity * tightest * tan(30 * Double.pi / 180)).squareRoot()
+                    let ahead = Int((Autopilot.lookahead(speed: s.speed) / route.spacing).rounded())
+                    if cap < route.samples[(r.index + ahead) % route.count].speed { lastLimit = cap }
+                }
                 return r.control
             }
             if step % every == 0 {
@@ -157,7 +239,11 @@ enum Smoothness {
                                       avoidance: sim.proximityWarning,
                                       boundary: sim.boundaryWarning,
                                       nudged: sim.nudges > nudgesSeen,
-                                      clamped: abs(s.altitude - t.floor) < 0.5 || abs(s.altitude - t.ceiling) < 0.5))
+                                      clamped: abs(s.altitude - t.floor) < 0.5 || abs(s.altitude - t.ceiling) < 0.5,
+                                      east: s.east, north: s.north, speed: s.speed,
+                                      commandedPitchDeg: lastCmd.pitch * t.pitchLimit * 180 / .pi,
+                                      commandedBankDeg: lastCmd.roll * t.rollLimit * 180 / .pi,
+                                      speedLimit: lastLimit))
                 nudgesSeen = sim.nudges
             }
         }
@@ -306,6 +392,13 @@ struct SmoothnessTests {
         for (name, route, r) in results {
             for sp in r.spikes.sorted(by: { abs($0.az) > abs($1.az) }).prefix(6) {
                 print("SPIKE \(name) t=\(f1(sp.t)) az=\(String(format: "%+.1f", sp.az)) route index \(sp.routeIndex)/\(route.count) cause=\(sp.cause.rawValue)")
+            }
+        }
+
+        // GULLFIRE_SMOOTH_DUMP=<route name, e.g. River, or all>: one DUMP line per spike on that route.
+        if let want = ProcessInfo.processInfo.environment["GULLFIRE_SMOOTH_DUMP"], !want.isEmpty {
+            for (name, route, r) in results where want.lowercased() == "all" || want.lowercased() == name.lowercased() {
+                for line in Smoothness.dumpLines(name: name, route: route, report: r) { print(line) }
             }
         }
 

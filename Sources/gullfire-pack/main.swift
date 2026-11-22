@@ -33,12 +33,13 @@ if arguments[1] == "routes" {
             })?.points else { fail("no main stem ends at the fork", status: 1) }
             profile = RiverRoute.build(stem: stem, branch: branch, obstacles: package, tuning: FlightTuning())
         }
+        // NOTE: the app keys on the route name "River" (Route.interpolatesAltitudeByArc); keep it when writing the route.
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(profile.route)
         try data.write(to: city.appendingPathComponent("routes/river.json"))
-        print(String(format: "river: %d waypoints; gradient %.3f (tan of the %.0f deg pitch limit)",
-                     profile.route.waypoints.count, profile.gradient, FlightTuning().pitchLimit * 180 / Double.pi))
+        print(String(format: "river: %d waypoints; ramp gradient %.3f (seamGradient %.3f, pitch limit tan %.3f)",
+                     profile.route.waypoints.count, profile.gradient, RiverRoute.seamGradient, tan(FlightTuning().pitchLimit)))
         print(String(format: "low leg at 60 m for %.1f%% of its length", profile.shareAtFloor * 100))
         for (n, st) in profile.stretches.enumerated() {
             print(String(format: "stretch %d: from E %.0f N %.0f (%.0f m) to E %.0f N %.0f (%.0f m), peak %.0f m, caused by a %.0f m building at E %.0f N %.0f",

@@ -8,7 +8,7 @@
 
 Gullfire is a native macOS app that flies a simulated aircraft over a real city, drawn as green hidden-line wireframes on black.
 
-In 1981 a movie imagined what a navigation computer would show a pilot coming in over a city at night: green lines on black, every building a box. We liked it enough to build it with real map data. Gullfire 1.2.0 is source only: there is no download, so you build it yourself. It needs macOS 27 on Apple silicon, Xcode 27, XcodeGen and uv. It does not do anything useful. I'm serious. It flies over Chicago, very carefully.
+In 1981 a movie imagined what a navigation computer would show a pilot coming in over a city at night: green lines on black, every building a box. We liked it enough to build it with real map data. Gullfire 1.2.1 is source only: there is no download, so you build it yourself. It needs macOS 27 on Apple silicon, Xcode 27, XcodeGen and uv. It does not do anything useful. I'm serious. It flies over Chicago, very carefully.
 
 <p align="center"><img src=".github/screenshots/c6-flight-scenic.png" alt="Gullfire flying the Scenic route over the Chicago map: tall towers drawn as green lines on black, with the key list at the bottom right." width="720"></p>
 
@@ -33,10 +33,10 @@ In 1981 a movie imagined what a navigation computer would show a pilot coming in
 - In full-screen 5K runs, memory use moves between about 630 MB and 930 MB. The cause is not known yet.
 - Something outside the app can briefly hide its window during a run. We have seen it, and have not found the cause.
 - VoiceOver reads Settings and the route announced when you press C. It does not yet read the route hint at launch or the key list.
-- Pressing U while low, at about 80 m over the tallest towers, can brush a roof once, with about 5 m clearance, before the aircraft climbs away.
+- In our test of 1,176 start positions around the Loop, flown for two minutes each, one entry circled a block and brushed a roof after about 75 seconds (62 did in 1.2.0). Seven entries took longer than two minutes to join; all joined within 2 minutes 32 seconds. Entering from too high can still make the aircraft circle before it joins.
 - Downtown, where the towers rule out most joins, few or no streets can be picked, so pick mode can show nothing there.
 - Picking a street, and endless flight with it, is an alpha feature. It works, and it will change. Expect streets that cannot be picked, and the odd rough join.
-- The ride is not smooth everywhere yet. We smoothed street runs and endless flight in 1.2.0. They still have small vertical bumps at the tops of climbs and dips. The Scenic route has jolts where the lap closes, and the River route has bumps we have not explained. Flying by hand is unchanged.
+- The ride is not smooth everywhere yet. We smoothed street runs and endless flight in 1.2.0. They still have small vertical bumps at the tops of climbs and dips. The River route still has a few small bumps. They are smaller, and we have not found what causes them. Flying by hand is unchanged.
 - Nothing here has a date.
 
 ## Use
@@ -63,7 +63,7 @@ Start the app and it flies the Scenic route on autopilot. The list of routes app
 | B | Cycle the colour scheme (Default, Brand, Lime) |
 | P | Show or hide the performance overlay |
 | H | Cycle the readout: off, then the flight information, then the flight information with the performance and session lines |
-| K | Show or hide the key list (shown bottom right at the start) |
+| K | Show or hide the key list (shown bottom right at the start). In a short window the list scrolls |
 | G | Show or hide the glider (listed only when a model file is installed; see Adding a glider) |
 | F | Full screen |
 | N | Next music track (not in cathedral mode) |
@@ -86,7 +86,7 @@ J turns mouse flight on and off. Moving the mouse right banks right, and moving 
 
 Picking a street is an alpha feature. It works, but expect gaps and rough edges: streets that cannot be picked, a join that is not tidy, and a ride that is not as smooth as we want (see What it doesn't do yet).
 
-U starts endless flight. The aircraft flies loops made from the city's streets, one after another, with no input. It starts from cruise. If you are flying by hand, it switches to cruise first, then climbs over the roofs to join. The next loop is built in the background. The swap comes about a lap after you start it, when the aircraft reaches the end of the stretch it is on. The HUD shows `ENDLESS LOOP n / <street>` and `NEXT LOOP IN m:ss`. Press U again, or C, to stop. Space still switches between manual flight and cruise, and keeps endless flight on. In cruise the height keys do not change the climb-out that follows Space. Entering endless flight or a picked street is always a climb over the roofs first, then a join. For the first minute after it, the aircraft flies up to 60 m higher than the route and settles down.
+U starts endless flight. The aircraft flies loops made from the city's streets, one after another, with no input. It starts from cruise. If you are flying by hand, it switches to cruise first, then climbs over the roofs to join. The next loop is built in the background. The swap comes about a lap after you start it, when the aircraft reaches the end of the stretch it is on. The HUD shows `ENDLESS LOOP n / <street>` and `NEXT LOOP IN m:ss`. Press U again, or C, to stop. Space still switches between manual flight and cruise, and keeps endless flight on. In cruise the height keys do not change the climb-out that follows Space. Entering endless flight or a picked street is always a climb over the roofs first, then a join. For the first minute after it, the aircraft flies up to 60 m higher than the route and settles down. Since 1.2.1 the climb goes above every roof within reach of a turn before the join. In our test that was about 55 m higher than in 1.2.0, and it takes a little longer.
 
 Without a street graph in the city package, U says so and does nothing else. See Street graph below.
 
@@ -96,7 +96,7 @@ I lets you pick a street. The pointer is free. Move it over the flight view and 
 
 **Gullfire > About Gullfire** opens the About window. It shows the version and the build number, and the map credit once a city is loaded. It follows the light or dark appearance of your Mac.
 
-<p align="center"><img src=".github/screenshots/c6-about-light.png" alt="The About window in light appearance: the publisher mark, the Gullfire icon, Version 1.0.0 (1), the tagline, the shelf line, the OpenStreetMap and Overture credit, the N©! line and the public-domain line." width="300"> <img src=".github/screenshots/c6-about-dark.png" alt="The About window in dark appearance, with the same lines." width="300"></p>
+<p align="center"><img src=".github/screenshots/c6-about-light.png" alt="The About window in light appearance: the publisher mark, the Gullfire icon, Version 1.2.1 (5), the tagline, the shelf line, the OpenStreetMap and Overture credit, the N©! line and the public-domain line." width="300"> <img src=".github/screenshots/c6-about-dark.png" alt="The About window in dark appearance, with the same lines." width="300"></p>
 
 ### Getting a city
 
@@ -117,6 +117,16 @@ On one Mac (Apple silicon, macOS 27, Overture release 2026-10-21.0), the first r
 - `--force` replaces an existing folder that the script did not create. The old folder is moved aside, named `...before-build-<time>`, and not deleted. It never replaces a symbolic link.
 
 Gullfire also finds a package in the folder named by `GULLFIRE_CITY`, or in `Cities/Chicago` inside the project folder when you run it from there.
+
+**If you built Chicago with 1.2.0.** You do not need to run the whole script again. Only the Scenic and River routes changed. From the project folder:
+
+```bash
+python3 Tools/make_routes.py Cities/Chicago
+swift run -c release gullfire-pack routes Cities/Chicago
+cp Cities/Chicago/routes/scenic.json Cities/Chicago/routes/river.json "$HOME/Library/Application Support/Gullfire/Cities/Chicago/routes/"
+```
+
+The first two lines rewrite the two route files in your build folder, and the last copies them to where Gullfire looks. The other routes and the map are not touched.
 
 <p align="center"><img src=".github/screenshots/c6-empty-light.png" alt="The empty state in light appearance: the app icon, the message 'No city package found', and the command Tools/build_chicago.sh." width="420"> <img src=".github/screenshots/c6-empty-dark.png" alt="The empty state in dark appearance, with the same message and command." width="420"></p>
 

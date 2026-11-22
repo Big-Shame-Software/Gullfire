@@ -24,7 +24,7 @@ public enum RiverRoute {
         /// The raised points' required altitude before ramps (for the report), metres.
         public var required: [Double]
         public var stretches: [Stretch]
-        /// Climb gradient used for the ramps: rise per metre of distance, from `FlightTuning.pitchLimit`.
+        /// Climb gradient used for the ramps: rise per metre of distance (`seamGradient`, or the pitch limit if that is lower).
         public var gradient: Double
         /// Share of the low leg still at the 60 m floor.
         public var shareAtFloor: Double
@@ -39,6 +39,17 @@ public enum RiverRoute {
     /// Clearance is checked, and the profile computed, every 10 m along the line.
     public static let checkSpacing = 10.0
     public static let returnOffset = 600.0
+    /// The most the altitude may change per metre of distance, anywhere on the loop (rise or fall). Below the 20 degree
+    /// pitch limit (tan 20 deg = 0.364), so the 600 m closing steps and the climbs to the return leg are gentle as well.
+    /// (The 230 m cliff of 1.2.1 came from the waypoint window, not the ramp; see `build`.)
+    public static let seamGradient = 0.25
+    /// Along the loop, the return leg is at `returnAltitude` until this distance before the low leg's first point,
+    /// then comes down to the 60 m floor at `seamGradient`. Its clearance requirement there is the floor, or the tallest
+    /// building within 20 m plus 30 m, whichever is higher.
+    public static var descentLength: Double { (returnAltitude - floorAltitude) / seamGradient }
+    /// Consecutive 10 m points closer than this are on one leg. A longer step is a junction (the closing step and
+    /// the 600 m step to the return leg), and the waypoint window does not reach across it.
+    static let legStepLimit = 15.0
 
     /// `stem` runs from the lake end to the fork; `branch` starts at the fork (PLAN 8.3 step 2).
     /// The loop is the low leg (60 m floor) then the return leg (350 m floor), and the same rule
@@ -70,9 +81,12 @@ public enum RiverRoute {
         for i in 1..<n { cumulative[i] = cumulative[i - 1] + step[i - 1] }
         let loopLength = cumulative[n - 1] + step[n - 1]
 
-        // Floor and requirement at each point.
+        // Floor and requirement at each point. The return leg is high (350 m) except in its last `descentLength`
+        // metres along the loop, where its floor is the 60 m floor and the descent is the ramp from 350 m.
         var floorAt = [Double](repeating: floorAltitude, count: n)
-        for i in lowCount..<n { floorAt[i] = returnAltitude }
+        for i in lowCount..<n {
+            floorAt[i] = loopLength - cumulative[i] >= descentLength ? returnAltitude : floorAltitude
+        }
         var required = floorAt
         var causeHeight = [Double](repeating: 0, count: n)
         var causeAt = [(Double, Double)](repeating: (0, 0), count: n)
@@ -126,8 +140,9 @@ public enum RiverRoute {
         }
 
         // Ramps: the least altitude that is at least `required` and never climbs or descends faster
-        // than the gradient allows. Two cyclic forward and backward passes settle the loop.
-        let gradient = tan(tuning.pitchLimit)
+        // than the gradient allows, on every step of the loop, the 600 m junctions included. Two cyclic
+        // forward and backward passes settle the loop.
+        let gradient = min(seamGradient, tan(tuning.pitchLimit))
         var alt = required
         for _ in 0..<2 {
             for k in 0..<(2 * n) {
@@ -162,14 +177,34 @@ public enum RiverRoute {
             k = end + 1
         }
 
-        // Waypoints every 60 m. Each takes the highest altitude within 30 m either side of
-        // it, so a 10 m profile point between two waypoints is never below its requirement.
+        // Waypoints every 60 m. Each takes the highest altitude within 30 m of it along the loop, so a 10 m
+        // profile point between two waypoints is never below its requirement. The window is measured in
+        // metres, and stops at a junction step: it used to take the 10 m points either side by array index,
+        // so the first waypoint (at the closing step) took the 350 m return leg 600 m away, and the route
+        // dropped 230 m in the next 60 m.
+        func windowTop(_ m: Int) -> Double {
+            var top = alt[m]
+            var j = m, reach = 0.0
+            while step[j] <= legStepLimit && reach + step[j] <= spacing / 2 + 1e-6 {
+                reach += step[j]
+                j = (j + 1) % n
+                top = max(top, alt[j])
+            }
+            j = m
+            reach = 0
+            while true {
+                let prev = (j - 1 + n) % n
+                guard step[prev] <= legStepLimit, reach + step[prev] <= spacing / 2 + 1e-6 else { break }
+                reach += step[prev]
+                j = prev
+                top = max(top, alt[j])
+            }
+            return top
+        }
         var waypoints: [Waypoint] = []
         let every = Int((spacing / checkSpacing).rounded())
         for m in stride(from: 0, to: n, by: every) {
-            var top = alt[m]
-            for d in -(every / 2)...(every / 2) { top = max(top, alt[(m + d + n) % n]) }
-            waypoints.append(Waypoint(east: points[m][0], north: points[m][1], alt: top, speedKt: speedKnots))
+            waypoints.append(Waypoint(east: points[m][0], north: points[m][1], alt: windowTop(m), speedKt: speedKnots))
         }
         let lowAtFloor = (0..<lowCount).filter { alt[$0] <= floorAltitude + 0.5 }.count
         return Profile(route: RouteFile(name: "River", closed: true, waypoints: waypoints),

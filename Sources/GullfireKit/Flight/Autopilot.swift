@@ -152,9 +152,27 @@ public struct HandBack: Sendable, Equatable {
     /// Where to start looking for the elevated point to fly to: the route sample the search begins at, instead of the one
     /// nearest the aircraft. Entering a loop at a particular place (a picked street) sets it.
     public var startIndex: Int?
+    /// The climb ratchet: the highest climb need so far. The climb ends when the aircraft reaches it, and it never falls, so a
+    /// tower that drops out of the scan for a step (the held heading drifts) cannot end the climb early.
+    public var climbNeedMax = -Double.infinity
+    /// The steepest descent the transit can count on, as height lost per metre flown (0.30, about 17 degrees). The pitch limit
+    /// is 20 degrees (tan 20 = 0.364), but the aircraft is not at the limit the whole way down, so the aim is picked where a
+    /// glide at 0.30 reaches it. A glide steeper than the limit cannot be flown, and one at the limit overflows the aim.
+    public static let glideGradient = 0.30
+
     public init(heading: Double, startIndex: Int? = nil) {
         self.heading = heading
         self.startIndex = startIndex
+    }
+
+    /// The largest distance the aircraft can reach from where it is while it turns through `headingError` radians (0 to pi)
+    /// at the bank limit `maxBank`: the turn's chord, 2 R sin(headingError / 2) with R = speed^2 / (g tan(maxBank)), plus 50 m
+    /// (20 m for the wing and disk, 30 m of slack). Never under 50 m.
+    public static func localRadius(speed: Double, headingError: Double, maxBank: Double) -> Double {
+        let g = FlightTuning().gravity
+        let he = min(max(abs(headingError), 0), Double.pi)
+        let r = speed * speed / (g * tan(maxBank))
+        return max(50, 2 * r * sin(he / 2) + 50)
     }
 }
 
@@ -164,6 +182,29 @@ extension Autopilot {
     /// the line. Raising is always safe (the 1.1 height rule), so it arrives high and settles onto the route's own height.
     public static func entryBoost(secondsSinceHandBack t: Double) -> Double {
         max(0, 60 * (1 - t / 60))
+    }
+
+    /// Whether an aim at `aimAltitude`, `distance` metres away, can be reached by a glide from `altitude` at `HandBack.glideGradient`
+    /// and still be inside the join's altitude window (25 m above the aim, the window's upper edge). Pure.
+    public static func glideFeasible(altitude: Double, aimAltitude: Double, distance: Double) -> Bool {
+        distance >= (altitude - aimAltitude - 25) / HandBack.glideGradient
+    }
+
+    /// The first route sample among `count` candidates at `from + offset + i * stride` (wrapping) that is 30 m above the roofs
+    /// around it and, when `glide` is set, glide-feasible from the aircraft (`glideFeasible`). nil when none is.
+    static func elevatedAim(from k0: Int, offset: Int, stride: Int, count: Int, s: FlightState, route: Route,
+                            obstacles: ObstacleSource, glide: Bool) -> Int? {
+        guard route.count > 0 else { return nil }
+        for i in 0..<count {
+            let k = (k0 + offset + i * stride) % route.count
+            let sm = route.samples[k]
+            if glide {
+                let dE = sm.east - s.east, dN = sm.north - s.north
+                guard glideFeasible(altitude: s.altitude, aimAltitude: sm.altitude, distance: (dE * dE + dN * dN).squareRoot()) else { continue }
+            }
+            if sm.altitude - roofHeight(east: sm.east, north: sm.north, radius: 30, obstacles: obstacles) >= 30 { return k }
+        }
+        return nil
     }
 
     /// Seconds-free check used at the hand-back: is anything within 30 m of the aircraft taller than altitude minus 10 m?
@@ -185,6 +226,12 @@ extension Autopilot {
             dx += 5
         }
         return tallest
+    }
+
+    /// The roofs a turn through `headingError` can reach from here, plus 30 m: the tallest roof within `HandBack.localRadius`.
+    static func localNeed(_ s: FlightState, headingError: Double, obstacles: ObstacleSource, tuning t: FlightTuning) -> Double {
+        let radius = HandBack.localRadius(speed: s.speed, headingError: headingError, maxBank: t.rollLimit)
+        return roofHeight(east: s.east, north: s.north, radius: radius, obstacles: obstacles) + 30
     }
 
     /// A hand-back to run, or nil when the aircraft is already above the roofs (then the usual chase applies unchanged).
@@ -211,16 +258,18 @@ extension Autopilot {
                 d += 20
             }
             need += 30
-            if s.altitude >= need - 1 {
+            // Local band (fix A): the roofs a turn of any direction from here can reach.
+            need = max(need, localNeed(s, headingError: .pi, obstacles: obstacles, tuning: t))
+            // Ratchet (fix B): judged against the highest need so far, which never falls.
+            hb.climbNeedMax = max(hb.climbNeedMax, need)
+            // (The aircraft cannot climb past the ceiling, so a need above it must not hold the climb forever.)
+            if s.altitude >= min(hb.climbNeedMax, t.ceiling) - 1 {
                 hb.phase = .transit
                 // The first route sample from here on that is itself 30 m above the roofs around it.
-                var k = hb.startIndex ?? here
-                var chosen: Int?
-                for _ in 0..<route.count {
-                    let sm = route.samples[k]
-                    if sm.altitude - roofHeight(east: sm.east, north: sm.north, radius: 30, obstacles: obstacles) >= 30 { chosen = k; break }
-                    k = (k + 1) % route.count
-                }
+                // (Glide-feasible from here first; if no sample on the route is, the first elevated one as before.)
+                let k0 = hb.startIndex ?? here
+                let chosen = elevatedAim(from: k0, offset: 0, stride: 1, count: route.count, s: s, route: route, obstacles: obstacles, glide: true)
+                    ?? elevatedAim(from: k0, offset: 0, stride: 1, count: route.count, s: s, route: route, obstacles: obstacles, glide: false)
                 guard let aim = chosen else { state = nil; return nil }
                 hb.aimIndex = aim
                 break
@@ -269,18 +318,24 @@ extension Autopilot {
                 state = nil
                 return nil
             }
-            var k = aimIndex
-            var found: Int?
-            for _ in 0..<60 {
-                k = (k + 5) % route.count
-                let sm = route.samples[k]
-                if sm.altitude - roofHeight(east: sm.east, north: sm.north, radius: 30, obstacles: obstacles) >= 30 { found = k; break }
-            }
+            let found = elevatedAim(from: aimIndex, offset: 5, stride: 5, count: 60, s: s, route: route, obstacles: obstacles, glide: true)
             guard let next = found else { state = nil; return nil }
             hb.aimIndex = next
             aimIndex = next
             aim = route.samples[next]
             dist = ((aim.east - s.east) * (aim.east - s.east) + (aim.north - s.north) * (aim.north - s.north)).squareRoot()
+        } else if dist < 120 && s.altitude - aim.altitude >= 25 {
+            // Overflow: the aircraft has passed the aim above the window. Waiting for the window circles it over the aim (the
+            // aim moves only inside the window), so the aim moves on now to the next elevated, glide-feasible sample: the
+            // next 60 steps of 5 samples, then the whole route once. If none is found, the aim stays.
+            let next = elevatedAim(from: aimIndex, offset: 5, stride: 5, count: 60, s: s, route: route, obstacles: obstacles, glide: true)
+                ?? elevatedAim(from: aimIndex, offset: 1, stride: 1, count: route.count - 1, s: s, route: route, obstacles: obstacles, glide: true)
+            if let n = next {
+                hb.aimIndex = n
+                aimIndex = n
+                aim = route.samples[n]
+                dist = ((aim.east - s.east) * (aim.east - s.east) + (aim.north - s.north) * (aim.north - s.north)).squareRoot()
+            }
         }
         // Altitude: the roofs along the straight line to the aim, plus 30 m, never below the route's own altitude there.
         var need = aim.altitude
