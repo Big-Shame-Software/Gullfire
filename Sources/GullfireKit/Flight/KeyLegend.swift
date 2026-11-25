@@ -21,6 +21,9 @@ public enum KeyLegend {
     /// Keys that act once on a press. Space is spelled "space".
     public static let actionKeys: Set<String> = ["b", "p", "h", "k", "g", "f", "r", "c", "t", "v", "j", "u", "i", "space", "n", "m", ","]
 
+    /// Flight ▸ Choose Map…: a menu shortcut, not a flight key, so it is not in `actionKeys`. Command-O, written as the menu shows it.
+    public static let chooseMapKey = "⌘" + ChooseMap.shortcutKey.uppercased()
+
     public static let groups: [Group] = [
         Group(title: "FLY", entries: [
             Entry(key: "W S", label: "PITCH", manualOnly: true),
@@ -36,6 +39,7 @@ public enum KeyLegend {
             Entry(key: "T V", label: "HEIGHT", manualOnly: false),
             Entry(key: "U", label: "ENDLESS", manualOnly: false),
             Entry(key: "I", label: "PICK STREET", manualOnly: false),
+            Entry(key: chooseMapKey, label: "CHOOSE MAP", manualOnly: false),
         ]),
         Group(title: "VIEW", entries: [
             Entry(key: "B", label: "PALETTE", manualOnly: false),
@@ -52,17 +56,18 @@ public enum KeyLegend {
         ]),
     ]
 
-    /// The legend's groups, without the G row when there is no glider model (D1): G does nothing without one.
-    public static func groups(glider: Bool) -> [Group] {
+    /// The legend's groups, without the G row when there is no glider model (D1): G does nothing without one. Without a second
+    /// map the Choose Map row goes too: the command does nothing with one map installed.
+    public static func groups(glider: Bool, chooseMap: Bool = true) -> [Group] {
         groups.map { group in
-            Group(title: group.title, entries: group.entries.filter { glider || $0.key != "G" })
+            Group(title: group.title, entries: group.entries.filter { (glider || $0.key != "G") && (chooseMap || $0.key != chooseMapKey) })
         }
     }
 
-    /// Every single-letter key the legend names, lowercased, so a test can compare it with the handler.
+    /// Every single-letter key the legend names, lowercased (the menu shortcut is not a key the flight view answers to), so a test can compare it with the handler.
     public static var namedKeys: Set<String> {
         var keys = Set<String>()
-        for entry in groups.flatMap(\.entries) {
+        for entry in groups.flatMap(\.entries) where entry.key != chooseMapKey {
             for part in entry.key.split(separator: " ") {
                 keys.insert(part == "SPACE" ? "space" : part.lowercased())
             }

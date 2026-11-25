@@ -61,3 +61,68 @@ struct KeyLegendTests {
         #expect(KeyLegend.heldKeys.isDisjoint(with: KeyLegend.actionKeys))
     }
 }
+
+@Suite("Choose Map")
+struct ChooseMapTests {
+    @Test func shortcutIsCommandOAndIsListedInTheKeyList() {
+        #expect(ChooseMap.shortcutKey == "o")
+        #expect(KeyLegend.chooseMapKey == "⌘O")
+        let flight = KeyLegend.groups(glider: false).first { $0.title == "FLIGHT" }
+        #expect(flight?.entries.contains { $0.key == "⌘O" && $0.label == "CHOOSE MAP" && !$0.manualOnly } == true)
+        // It is a menu shortcut, so the flight view's key handler does not answer to it.
+        #expect(!KeyLegend.actionKeys.contains("o"))
+        #expect(!KeyLegend.heldKeys.contains("o"))
+    }
+
+    @Test func keyListHidesTheRowWithOneMap() {
+        let one = KeyLegend.groups(glider: false, chooseMap: false).flatMap(\.entries).map(\.key)
+        let two = KeyLegend.groups(glider: false, chooseMap: true).flatMap(\.entries).map(\.key)
+        #expect(!one.contains("⌘O"))
+        #expect(two.contains("⌘O"))
+        #expect(two.count == one.count + 1)
+    }
+
+    @Test func commandIsEnabledOnlyInFlightWithTwoOrMoreMaps() {
+        #expect(ChooseMap.isAvailable(inFlight: true, mapCount: 2))
+        #expect(ChooseMap.isAvailable(inFlight: true, mapCount: 4))
+        #expect(!ChooseMap.isAvailable(inFlight: true, mapCount: 1))
+        #expect(!ChooseMap.isAvailable(inFlight: true, mapCount: 0))
+        #expect(!ChooseMap.isAvailable(inFlight: false, mapCount: 4))
+    }
+
+    @Test func pickerButtonSaysFlyAndTheIntroSaysDoubleClickWorks() {
+        #expect(ChooseMap.pickerButtonTitle == "Fly")
+        #expect(ChooseMap.pickerIntro == "Double-click a map, or select it and press Fly.")
+        #expect(ChooseMap.menuTitle == "Choose Map…")
+    }
+}
+
+@Suite("Choose Map availability")
+@MainActor
+struct ChooseMapAvailabilityTests {
+    @Test func followsTheRuleAsTheWindowStateChanges() {
+        let state = ChooseMapAvailability()
+        #expect(!state.isAvailable)                                  // picker showing at launch
+        state.update(inFlight: true, mapCount: 1)
+        #expect(!state.isAvailable)                                  // one map in flight: greyed out
+        state.update(inFlight: true, mapCount: 4)
+        #expect(state.isAvailable)                                   // two or more maps in flight
+        state.update(inFlight: false, mapCount: 4)
+        #expect(!state.isAvailable)                                  // back at the picker
+    }
+}
+
+@Suite("Endless flight and the mouse")
+struct ModeExclusionTests {
+    @Test func turningEndlessOnGivesTheMouseBack() {
+        #expect(ModeExclusion.givesBackMouse(endlessTurningOn: true, mouseOn: true))
+        #expect(!ModeExclusion.givesBackMouse(endlessTurningOn: true, mouseOn: false))
+        #expect(!ModeExclusion.givesBackMouse(endlessTurningOn: false, mouseOn: true))   // U turning endless off leaves the mouse alone
+    }
+
+    @Test func takingTheMouseLeavesEndless() {
+        #expect(ModeExclusion.leavesEndless(mouseTurningOn: true, endlessOn: true))
+        #expect(!ModeExclusion.leavesEndless(mouseTurningOn: true, endlessOn: false))
+        #expect(!ModeExclusion.leavesEndless(mouseTurningOn: false, endlessOn: true))
+    }
+}

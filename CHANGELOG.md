@@ -2,6 +2,37 @@
 
 All notable changes to Gullfire are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and Gullfire uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-11-25
+
+### Added
+
+- Bigger maps. `Tools/build_city.sh <id>` builds one of four maps from the open data, the same way `Tools/build_chicago.sh` builds Chicago: `chicago`, `chicagowide` (85 km²), `chicagocity` (1,499 km² box, with inner suburbs) and `cookcounty` (4,777 km², the county's bounding rectangle). No map ships with the app. Each is built once on your Mac. `build_chicago.sh` still works.
+- A map picker. When more than one map is installed, Gullfire opens on a list of them, each with its area, its size on disk and a diagram that shows where it sits inside the bigger ones. Flight ▸ Choose Map… (⌘O, which also works in full screen) goes back to it, and is greyed out when there is no other map to choose. The picker's button is Fly. With one map installed, Gullfire opens straight into it, as before.
+- Settings ▸ Maps lists the installed maps and the sizes this Mac can build, with the command to copy for each. The app does not download or build anything.
+- Before it downloads anything, `build_city.sh` checks this Mac's memory and free disk against what the map needs. If either is short it says what is needed and stops. `--force` overrides it.
+- The build pins the map data to the Overture release the maps were tested on (2026-10-21.0), named in `Resources/Recipes/recipes.json`. `--overture-release latest|<id>` chooses another. If the pinned release is no longer published, the build stops before it downloads anything. The release is recorded in the package's manifest.
+- The log says what asked Gullfire to quit: the sender of a quit request from another program, or "menu or key".
+- Street graphs, loops and routes for the bigger maps, made by the same build. Endless flight and picking a street work on all four.
+
+### Changed
+
+- Large or dense maps (over 200 km², or over 1.5 million line segments) draw only what is within 5 km of the aircraft, with a fade at the edge. A skyline farther away is not drawn. This keeps the frame rate up on ChicagoWide, ChicagoCity and Cook County. Chicago is unchanged.
+- The street graph loads when the map opens, off the main thread, and is read from disk. It takes about 21 MB of memory on ChicagoCity and 53 MB on Cook County, down from about 140 and 240.
+- The memory limits in the project notes are now two tiers by size: 650 MB windowed for maps of 1 million segments or fewer, 850 MB for bigger ones. Endless flight covers new ground, and the graphics driver's working memory grows with it, then gives pages back.
+
+### Fixed
+
+- Endless flight (U) and mouse flight (J) no longer run together. Turning endless on gives the mouse back, and taking the mouse leaves endless flight.
+- Endless flight no longer stalls on its first loop. On about one Cook County start in 24, the stretch after the first loop could not start a loop, so every retry failed and the aircraft kept flying the first loop. A loop now chains only to a stretch the build marked as able to start one.
+
+### Known issues
+
+- Only one Mac, with 48 GB and 14 cores, has built these maps and flown them. The memory and time figures in the README come from it, and they are estimates for other Macs. Windowed memory peaked at 754 MB on ChicagoCity and 525 MB on Cook County over an hour of endless flight on that Mac.
+- Once in a run, flight can stop for 0.6 to 1.2 seconds, at the start of endless flight or at one other moment. 1.2.1 does this too. We have not found the cause.
+- Building ChicagoCity or Cook County takes tens of minutes and several gigabytes of memory. Most of it is the step that marks which streets can start a loop.
+- On the bigger maps, Scenic and River roll fast for about a second where they turn round, at the end of the river or the edge of the map. Chicago's River does the same. There were no collision nudges in our tests, but those turns are not smooth.
+- On Cook County, a street picked 50 km away is not reached in 15 minutes of flight, because the box is 4,777 km². In our test, picks on eight starts flew with no collision nudges and at least 30 m of clearance.
+
 ## [1.2.1] - 2026-11-22
 
 ### Changed

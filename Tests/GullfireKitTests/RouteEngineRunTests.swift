@@ -7,10 +7,15 @@ import Testing
 /// headless for 600 s, with zero collision nudges, and a deliberately bad route must be caught by the checker.
 enum EnginePackages {
     /// Packages that have a street graph (Chicago here; the engine never names a city).
-    static let dirs: [URL] = ["Chicago"].map { PackageTests.root.appendingPathComponent("Cities/\($0)", isDirectory: true) }
+    /// GULLFIRE_ENGINE_DIRS (absolute folders, separated by colons) names the packages instead, for a package built elsewhere.
+    static let envDirs: [URL]? = ProcessInfo.processInfo.environment["GULLFIRE_ENGINE_DIRS"].map {
+        $0.split(separator: ":").map { URL(fileURLWithPath: String($0), isDirectory: true) }
+    }
+    static let dirs: [URL] = (envDirs ?? ["Chicago"].map { PackageTests.root.appendingPathComponent("Cities/\($0)", isDirectory: true) })
         .filter { FileManager.default.fileExists(atPath: $0.appendingPathComponent("streets.json").path) }
     static var available: Bool { !dirs.isEmpty && PackageTests.built }
-    static let seeds: [UInt64] = [1, 2, 3, 4, 5, 6]
+    /// Seeds 1 to 6, or 1 to N when GULLFIRE_ENGINE_SEEDS=N (a larger sample, to measure a rate rather than pass six).
+    static let seeds: [UInt64] = (1...UInt64(max(1, Int(ProcessInfo.processInfo.environment["GULLFIRE_ENGINE_SEEDS"] ?? "") ?? 6))).map { $0 }
 }
 
 @Suite("Route engine on real packages", .enabled(if: EnginePackages.available))
@@ -105,7 +110,9 @@ enum ChainFlight {
         var outsideSeconds = 0.0
     }
 
-    static func fly(dir: URL, seed: UInt64, seconds: Double, heightOffset: Double = 0) throws -> Result? {
+    static func fly(dir: URL, seed: UInt64, seconds: Double, heightOffset: Double = 0,
+                    sample: ((FlightState, Double) -> Void)? = nil,
+                    observe: ((CityPackage) -> Void)? = nil, finish: ((CityPackage) -> Void)? = nil) throws -> Result? {
         let city = try CityPackage.open(directory: dir)
         guard var flight = EndlessFlight(city: city, seed: seed), let first = flight.nextLoop() else { return nil }
         let t = FlightTuning()
@@ -121,7 +128,7 @@ enum ChainFlight {
         var result = Result()
         let extent = city.manifest.extentM
         var roofs = RoofCache(count: route.count)
-        for _ in 0..<Int(seconds / t.fixedStep) {
+        for step in 0..<Int(seconds / t.fixedStep) {
             sim.advance(by: t.fixedStep, obstacles: city, extent: extent) { s, _ in
                 let r = Autopilot.control(for: s, route: route, hint: hint, tuning: t,
                                           heightOffset: heightOffset, obstacles: heightOffset == 0 ? nil : city, roofs: roofs)
@@ -142,6 +149,10 @@ enum ChainFlight {
                 return r.control
             }
             let s = sim.current
+            if let sample, step % Int(0.5 / t.fixedStep) == 0 {
+                if step % Int(30 / t.fixedStep) == 0 { observe?(city) }
+                sample(s, Double(step) * t.fixedStep)
+            }
             result.minAltitude = min(result.minAltitude, s.altitude)
             result.minClearance = min(result.minClearance, s.altitude - Double(city.obstacleHeight(east: s.east, north: s.north)))
             result.maxBank = max(result.maxBank, abs(s.bank) * 180 / .pi)
@@ -150,6 +161,7 @@ enum ChainFlight {
             }
         }
         result.nudges = sim.nudges
+        finish?(city)
         return result
     }
 }
@@ -161,7 +173,8 @@ enum ChainFlight {
 struct EndlessEntryTests {
     /// Flies `route` for `seconds` from `start`, the way the app does while a hand-back is running.
     static func fly(route: Route, from start: FlightState, handBack: HandBack?, city: CityPackage, seconds: Double,
-                    watching stretch: StreetStretch? = nil) -> (nudges: Int, minClearance: Double, handedBack: Bool, closest: Double) {
+                    watching stretch: StreetStretch? = nil, alsoWatching other: StreetStretch? = nil)
+        -> (nudges: Int, minClearance: Double, handedBack: Bool, closest: Double, closestOther: Double) {
         let t = FlightTuning()
         var sim = Simulation(start: start, tuning: t)
         var hb = handBack
@@ -169,7 +182,7 @@ struct EndlessEntryTests {
         var endedAt: Double?
         var elapsed = 0.0
         var minClearance = Double.infinity
-        var closest = Double.infinity
+        var closest = Double.infinity, closestOther = Double.infinity
         let extent = city.manifest.extentM
         let wasHandBack = handBack != nil
         for _ in 0..<Int(seconds / t.fixedStep) {
@@ -188,8 +201,9 @@ struct EndlessEntryTests {
             let s = sim.current
             minClearance = min(minClearance, s.altitude - Double(city.obstacleHeight(east: s.east, north: s.north)))
             if let stretch { closest = min(closest, StreetPicker.distance(from: SIMD2(s.east, s.north), to: stretch)) }
+            if let other { closestOther = min(closestOther, StreetPicker.distance(from: SIMD2(s.east, s.north), to: other)) }
         }
-        return (sim.nudges, minClearance, wasHandBack, closest)
+        return (sim.nudges, minClearance, wasHandBack, closest, closestOther)
     }
 
     @Test(arguments: EnginePackages.dirs) func aForcedHandBackEntersTheLoopWithoutNudges(dir: URL) throws {
@@ -226,25 +240,59 @@ extension EndlessEntryTests {
         let city = try CityPackage.open(directory: dir)
         guard let open = try? Route.load(dir.appendingPathComponent("routes/scenic.json")) else { return }
         let graph = try #require(try StreetGraph.load(from: dir))
-        var reached = 0, tried = 0
+        var reached = 0, tried = 0, movedReached = 0
+        var picked = Set<String>()
         for k in 0..<8 {
-            // A different stretch for each start, spread over the graph.
-            let stretch = graph.stretches[(k * graph.stretches.count / 8) % graph.stretches.count]
-            var flight = try #require(EndlessFlight(city: city, seed: 11 + UInt64(k)))
-            guard let loop = flight.firstLoop(startingWith: stretch.id, reversed: false) else { continue }
             let a = open.samples[(open.count * k / 8) % open.count], b = open.samples[(open.count * k / 8 + 1) % open.count]
             let start = FlightState(east: a.east, north: a.north, altitude: a.altitude,
                                     heading: atan2(b.east - a.east, b.north - a.north), speed: a.speed)
+            // A street near this start, that a loop can start with and that is 800 m to 5 km away: the k-th nearest such
+            // stretch in the spaced order (index k * n / 8 of the n candidates by distance), moved on past any already picked.
+            let here = SIMD2(a.east, a.north)
+            let candidates = graph.stretches.compactMap { s -> (stretch: StreetStretch, distance: Double)? in
+                guard s.canStart(reversed: false), let head = s.first else { return nil }
+                // The nearest point is no farther than the head plus the stretch's length, so far stretches can be skipped cheaply.
+                if hypot(head.x - here.x, head.y - here.y) - s.length > 5000 { return nil }
+                let d = StreetPicker.distance(from: here, to: s)
+                return d >= 800 && d <= 5000 ? (s, d) : nil
+            }.sorted { $0.distance < $1.distance }
+            let n = candidates.count
+            guard n > 0 else { continue }
+            var index = min(k * max(1, n / 8), n - 1)
+            while index < n, picked.contains(candidates[index].stretch.id) { index += 1 }
+            guard index < n else { continue }
+            let stretch = candidates[index].stretch
+            picked.insert(stretch.id)
+            var flight = try #require(EndlessFlight(city: city, seed: 11 + UInt64(k)))
+            guard let loop = flight.firstLoop(startingWith: stretch.id, reversed: false) else { continue }
             let hb = HandBack(heading: start.heading, startIndex: max(0, loop.route.count - 260))
-            let r = Self.fly(route: loop.route, from: start, handBack: hb, city: city, seconds: 900, watching: stretch)
+            // The sensitivity case: the same street moved 50 m sideways (across its own direction). The same flight must NOT
+            // count as reaching it, or the metric measures nothing.
+            let moved = Self.shifted(stretch, by: 50)
+            let r = Self.fly(route: loop.route, from: start, handBack: hb, city: city, seconds: 900, watching: stretch, alsoWatching: moved)
             tried += 1
             if r.closest < 30 { reached += 1 }
-            print(String(format: "PICK ENTRY %@ start %d: %d nudges, clearance %.1f m, closest approach to the picked street %.0f m",
-                         dir.lastPathComponent, k, r.nudges, r.minClearance, r.closest))
+            if r.closestOther < 30 { movedReached += 1 }
+            print(String(format: "PICK ENTRY %@ start %d: %d nudges, clearance %.1f m, closest approach to the picked street %.1f m, to the same street moved 50 m sideways %.1f m",
+                         dir.lastPathComponent, k, r.nudges, r.minClearance, r.closest, r.closestOther))
             #expect(r.nudges <= 1, "start \(k): \(r.nudges) collision nudges entering the picked loop")
             #expect(r.minClearance > 0)
         }
         #expect(tried >= 4)
         #expect(reached >= tried - 1, "only \(reached) of \(tried) picks reached their street")
+        // A street 50 m off must not be "reached" by the same flights (a few may pass a parallel street by chance).
+        #expect(movedReached <= tried / 2, "\(movedReached) of \(tried) flights also 'reached' the street moved 50 m sideways: the check cannot tell them apart")
+        #expect(movedReached < reached)
+    }
+
+    /// The stretch with every point moved `metres` to the left of the chord from its first to its last point.
+    static func shifted(_ s: StreetStretch, by metres: Double) -> StreetStretch {
+        let line = s.polyline
+        guard let a = line.first, let b = line.last, a != b else { return s }
+        let dx = b.x - a.x, dy = b.y - a.y, len = (dx * dx + dy * dy).squareRoot()
+        let nx = -dy / len * metres, ny = dx / len * metres
+        var pts: [Double] = []
+        for p in line { pts.append(p.x + nx); pts.append(p.y + ny) }
+        return StreetStretch(id: s.id + "-moved", streetClass: s.streetClass, names: s.names, length: s.length, points: pts, loops: s.loops)
     }
 }

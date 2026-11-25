@@ -81,7 +81,13 @@ public struct StreetGraph: Codable, Sendable, Equatable {
     /// The same, from a named file (a test reads the vetted graph the 1.0 street routes were made from).
     public static func load(fileAt url: URL) throws -> StreetGraph? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        let data = try Data(contentsOf: url)
+        let data = try Data(contentsOf: url, options: .alwaysMapped)
+        // The hand-written parser reads the bytes straight into the arrays. JSONDecoder builds a large object tree first
+        // (a transient of over 100 MB on a 21 MB file), so it is only the fallback for anything the parser does not accept.
+        if let graph = try? data.withUnsafeBytes({ try StreetGraphParser.parse($0) }) {
+            guard graph.format == 1 else { throw StreetGraphError.unsupportedFormat(graph.format) }
+            return graph
+        }
         // Check the format before the rest, so a future format fails as "unsupported", not as a decoding error.
         struct Header: Decodable { var format: Int }
         let format = try JSONDecoder().decode(Header.self, from: data).format

@@ -21,13 +21,16 @@
 		267262B13B60A6EDC73A745A /* ProfileRepair.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EFEE8649EFF16171108F31F /* ProfileRepair.swift */; };
 		282AD65ECA1066876A0ADEE7 /* CathedralSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880D4E70AB59756DBC22501E /* CathedralSheet.swift */; };
 		298AEB7678FB3010B0A110B5 /* gymnopedie_1.loopmap.json in Resources */ = {isa = PBXBuildFile; fileRef = AC1356A245FE81FD2C679CA6 /* gymnopedie_1.loopmap.json */; };
+		2BBA8D7550387A1CEF220D58 /* StreetGraphParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E52EDDBAE43CDE0E5B9AD1C /* StreetGraphParser.swift */; };
 		2CAC0521C1D5620219D0B8C0 /* ProfilePlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD972A6F677928B8BDA3AF1E /* ProfilePlot.swift */; };
 		330456FEC5C2F5BAB196564E /* JoinBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9470784BD9AC16A97E461DF8 /* JoinBuilder.swift */; };
+		37983E6EB02F5FFB3533A069 /* StreetIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB6D9A54C08E1FCAD3C20E68 /* StreetIndex.swift */; };
 		3CFBF749568CD90D66A45ABC /* GullfireKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 556DF430D8507C141E28566B /* GullfireKit.framework */; };
 		4183CBDC3B6A501B90A36AB4 /* RouteWalker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4744DF3F0CD34D39EF83A245 /* RouteWalker.swift */; };
 		429F8B209256A9E896EE0B0B /* CrossfadePlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48AEC08DE628354739FDBD9A /* CrossfadePlayer.swift */; };
 		43C5057F56FE9C851A51B075 /* FlightState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8D42E047F2E719125B07407 /* FlightState.swift */; };
 		44796739488F3A740E4D0AFA /* StreetOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F3900F3D860E6525949A8AF /* StreetOverlay.swift */; };
+		493601D5087071C85FD89A69 /* CityFootprintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA9B24DFACC5DB51045BD6B /* CityFootprintView.swift */; };
 		4C004668846A7057A8E7E7C2 /* TileSpill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8296E7EA7F9CEDFD55248D0F /* TileSpill.swift */; };
 		4C124CD0E60A892EB77285C4 /* MetalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4ADA1049415905A193453E20 /* MetalView.swift */; };
 		52B1E4FDB25D6D7C6E3DBA15 /* Avoidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = A953FDFD5DB5B386F35C95C2 /* Avoidance.swift */; };
@@ -37,13 +40,19 @@
 		5CD777B330C1CD581016B9EA /* EndlessFlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12E270D5382EBDF90E4CBD94 /* EndlessFlight.swift */; };
 		5EC8652BB87D6343E3F23DE9 /* Frustum.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058435BB6C2BFDFB1FF99B9C /* Frustum.swift */; };
 		60AA31BE204E31BF52AE4A03 /* FlightInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D323D1037AEAA5EED00F936 /* FlightInput.swift */; };
+		6481CBE375D6A01389AC5CE7 /* ChooseMap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF429B5853C27ABF00A999D /* ChooseMap.swift */; };
 		6548B9FE9C01D3C3EB6631A8 /* CrossfadePlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AB962806E5F41594A30F2F5 /* CrossfadePlan.swift */; };
 		65FAE7E0037DED2A52F4A86A /* FlightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07C7A3150EA2F9A624862AB6 /* FlightView.swift */; };
 		661BF1886504D25BD22FD878 /* RouteList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713BC99332897C6A29B3197F /* RouteList.swift */; };
+		69D770AFA391F9AE0CD1E6DA /* ModeExclusion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8519F45D8DDEB8D8505C1E0 /* ModeExclusion.swift */; };
 		6D7D36050BCDD847D6A75E98 /* StreetPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9044B377BB0347926BFA7904 /* StreetPicker.swift */; };
 		702A6B6AD14026D5B98425BF /* RouteAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73191F85381AD5E839AB3BC4 /* RouteAssembler.swift */; };
+		7A60C218032BFFE969A073C9 /* CityPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B88CEA0C6EAD3BC42FA3F15 /* CityPickerView.swift */; };
 		7B5D02F37349443935A98C91 /* KeyLegend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68D0F12E3546455BCE6BB4BE /* KeyLegend.swift */; };
+		7EAC63C0869E76EA3142E68D /* DrawDistancePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CFDF9DF497767FCFFFD56C /* DrawDistancePolicy.swift */; };
 		835866A8FC38438178C0A7B7 /* EarClip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229D3355D865187322296342 /* EarClip.swift */; };
+		866D3784CE4805D93FD0D0AF /* recipes.json in Resources */ = {isa = PBXBuildFile; fileRef = 0D4DB845BBE4920F8B84A184 /* recipes.json */; };
+		888762E70EE2A7FB52E1ECA1 /* CityCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10501F77014B146B12158E2 /* CityCatalog.swift */; };
 		8FC3190B01639A4DBD07506A /* Route.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0453112C006CB941CA624F9D /* Route.swift */; };
 		9022620C77BB7952B352DE33 /* DryRun.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D3547DA76C6C6E7B8AB4DFA /* DryRun.swift */; };
 		9B6535AEEB65CE2F6A350E0C /* Offscreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A5797B763F49AEBFB16FD07 /* Offscreen.swift */; };
@@ -68,6 +77,7 @@
 		C7515A2ED61C1F577E2872DF /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = E6A1FE67997E3282DBA8F341 /* AppIcon.icon */; };
 		C99310FBC5C43F3020DD059E /* ChaseCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56E0420C9E22ADC08FFA02FA /* ChaseCamera.swift */; };
 		CA58B3F7DE01FA77F94C5E3C /* Autopilot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DFE6A6C6811486C332D7C60 /* Autopilot.swift */; };
+		CEE04BC370AFEE531FF6E9BD /* QuitSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB17EC898D8D06F4D03375F8 /* QuitSource.swift */; };
 		D01842B43E0A3B690320F9B0 /* CityPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5A0A15CC970BADDBC8DB283 /* CityPackage.swift */; };
 		D08430C4BF9DEEB3442738D6 /* SnapshotHook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30D5F1756B44C48DE448931F /* SnapshotHook.swift */; };
 		D6C40218FE093190690544D2 /* RiverRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = F58A30F20942E7351FBD0144 /* RiverRoute.swift */; };
@@ -75,6 +85,7 @@
 		D9E9A748A08AC93885D84266 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4098959E239B1C205A96E2A7 /* Assets.xcassets */; };
 		DA29C54D6418A8B8FF69E4B3 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4EC29868DE46892AAA33E21 /* Views.swift */; };
 		DC77ADA64369516CE6DC21AB /* GeoJSONLines.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC344970AAEFED55CF7F831 /* GeoJSONLines.swift */; };
+		E865519254ACEDFF9EC6F7EB /* RecipeList.swift in Sources */ = {isa = PBXBuildFile; fileRef = A98016908345B4B0A005B287 /* RecipeList.swift */; };
 		E883D08F8B180B3D9AC4F200 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 945C7BB381399E4AD8133F87 /* AboutView.swift */; };
 		EAB588C03B2F4AFF3C2F0585 /* KeyLegendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15A657C3B7E9C494EBCDB3C /* KeyLegendView.swift */; };
 		ED3D5555F7491BC0CD779400 /* MouseFlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DABABAA5DBBE2B1F0E2E633 /* MouseFlight.swift */; };
@@ -114,7 +125,10 @@
 		04CABD385806029046A3FE32 /* FlightScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightScript.swift; sourceTree = "<group>"; };
 		058435BB6C2BFDFB1FF99B9C /* Frustum.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Frustum.swift; sourceTree = "<group>"; };
 		07C7A3150EA2F9A624862AB6 /* FlightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightView.swift; sourceTree = "<group>"; };
+		0CF429B5853C27ABF00A999D /* ChooseMap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChooseMap.swift; sourceTree = "<group>"; };
+		0D4DB845BBE4920F8B84A184 /* recipes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = recipes.json; sourceTree = "<group>"; };
 		0E26523E677E14AC112E2A1E /* Gullfire.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gullfire.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E52EDDBAE43CDE0E5B9AD1C /* StreetGraphParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetGraphParser.swift; sourceTree = "<group>"; };
 		0F3900F3D860E6525949A8AF /* StreetOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetOverlay.swift; sourceTree = "<group>"; };
 		115699BF55008ADD2FEBDE97 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		12E270D5382EBDF90E4CBD94 /* EndlessFlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndlessFlight.swift; sourceTree = "<group>"; };
@@ -142,6 +156,7 @@
 		56E0420C9E22ADC08FFA02FA /* ChaseCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChaseCamera.swift; sourceTree = "<group>"; };
 		5A2FD9A1CD650E2EE5A96E97 /* ObstacleGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObstacleGrid.swift; sourceTree = "<group>"; };
 		5B3956508813BC480517965D /* Gadgets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Gadgets; path = Packages/Gadgets; sourceTree = SOURCE_ROOT; };
+		5B88CEA0C6EAD3BC42FA3F15 /* CityPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPickerView.swift; sourceTree = "<group>"; };
 		5DB375CA51692B867003FBCA /* StreetGraph.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetGraph.swift; sourceTree = "<group>"; };
 		5DB5AF4B0FC92DCD1BAC937E /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		60B1414A3F551DC9EE73D212 /* MusicSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSource.swift; sourceTree = "<group>"; };
@@ -167,17 +182,24 @@
 		9D323D1037AEAA5EED00F936 /* FlightInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightInput.swift; sourceTree = "<group>"; };
 		A16BAF076C1206CB12D57C2F /* HUDLevel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDLevel.swift; sourceTree = "<group>"; };
 		A5A0A15CC970BADDBC8DB283 /* CityPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityPackage.swift; sourceTree = "<group>"; };
+		A8519F45D8DDEB8D8505C1E0 /* ModeExclusion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModeExclusion.swift; sourceTree = "<group>"; };
 		A953FDFD5DB5B386F35C95C2 /* Avoidance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Avoidance.swift; sourceTree = "<group>"; };
+		A98016908345B4B0A005B287 /* RecipeList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecipeList.swift; sourceTree = "<group>"; };
+		AB17EC898D8D06F4D03375F8 /* QuitSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuitSource.swift; sourceTree = "<group>"; };
 		AC1356A245FE81FD2C679CA6 /* gymnopedie_1.loopmap.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = gymnopedie_1.loopmap.json; sourceTree = "<group>"; };
 		AD972A6F677928B8BDA3AF1E /* ProfilePlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePlot.swift; sourceTree = "<group>"; };
 		B15A657C3B7E9C494EBCDB3C /* KeyLegendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyLegendView.swift; sourceTree = "<group>"; };
+		BAA9B24DFACC5DB51045BD6B /* CityFootprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityFootprintView.swift; sourceTree = "<group>"; };
 		BB6755FB233919E8AC10FE78 /* MIDIMusic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MIDIMusic.swift; sourceTree = "<group>"; };
+		C10501F77014B146B12158E2 /* CityCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityCatalog.swift; sourceTree = "<group>"; };
 		C141914AEAE040FD34B262D5 /* TileIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TileIndex.swift; sourceTree = "<group>"; };
 		CE4925D6671D5C4D6AA0D22E /* PackageWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PackageWriter.swift; sourceTree = "<group>"; };
 		D54BADC2BBACA09A06D90FFB /* AutoOrbit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoOrbit.swift; sourceTree = "<group>"; };
 		D8D42E047F2E719125B07407 /* FlightState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightState.swift; sourceTree = "<group>"; };
+		DB6D9A54C08E1FCAD3C20E68 /* StreetIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreetIndex.swift; sourceTree = "<group>"; };
 		E4EC29868DE46892AAA33E21 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
 		E6A1FE67997E3282DBA8F341 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		E6CFDF9DF497767FCFFFD56C /* DrawDistancePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawDistancePolicy.swift; sourceTree = "<group>"; };
 		E813050E0BA209D457BA3A85 /* RouteChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteChecker.swift; sourceTree = "<group>"; };
 		EC9B8E98AF7CBF37870F4C92 /* Footprint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Footprint.swift; sourceTree = "<group>"; };
 		F21660003787A6E7EF9C78C0 /* PerfLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerfLog.swift; sourceTree = "<group>"; };
@@ -288,6 +310,7 @@
 				2DFE6A6C6811486C332D7C60 /* Autopilot.swift */,
 				A953FDFD5DB5B386F35C95C2 /* Avoidance.swift */,
 				56E0420C9E22ADC08FFA02FA /* ChaseCamera.swift */,
+				0CF429B5853C27ABF00A999D /* ChooseMap.swift */,
 				8D3547DA76C6C6E7B8AB4DFA /* DryRun.swift */,
 				12E270D5382EBDF90E4CBD94 /* EndlessFlight.swift */,
 				04CABD385806029046A3FE32 /* FlightScript.swift */,
@@ -295,6 +318,7 @@
 				A16BAF076C1206CB12D57C2F /* HUDLevel.swift */,
 				9470784BD9AC16A97E461DF8 /* JoinBuilder.swift */,
 				68D0F12E3546455BCE6BB4BE /* KeyLegend.swift */,
+				A8519F45D8DDEB8D8505C1E0 /* ModeExclusion.swift */,
 				6DABABAA5DBBE2B1F0E2E633 /* MouseFlight.swift */,
 				3EFEE8649EFF16171108F31F /* ProfileRepair.swift */,
 				9A768991EF1C6510E3E5F589 /* ProfileSmoother.swift */,
@@ -305,6 +329,7 @@
 				713BC99332897C6A29B3197F /* RouteList.swift */,
 				4744DF3F0CD34D39EF83A245 /* RouteWalker.swift */,
 				F24395483B174303BE0838F8 /* Simulation.swift */,
+				DB6D9A54C08E1FCAD3C20E68 /* StreetIndex.swift */,
 				0F3900F3D860E6525949A8AF /* StreetOverlay.swift */,
 				9044B377BB0347926BFA7904 /* StreetPicker.swift */,
 			);
@@ -333,8 +358,17 @@
 			isa = PBXGroup;
 			children = (
 				BADED4A0E200B4FF704BC26B /* Music */,
+				D5F8E8894EE3390E58138620 /* Recipes */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		D5F8E8894EE3390E58138620 /* Recipes */ = {
+			isa = PBXGroup;
+			children = (
+				0D4DB845BBE4920F8B84A184 /* recipes.json */,
+			);
+			path = Recipes;
 			sourceTree = "<group>";
 		};
 		DC268152E97452F8C50DFB0D /* App */ = {
@@ -344,6 +378,8 @@
 				115699BF55008ADD2FEBDE97 /* AppModel.swift */,
 				4098959E239B1C205A96E2A7 /* Assets.xcassets */,
 				880D4E70AB59756DBC22501E /* CathedralSheet.swift */,
+				BAA9B24DFACC5DB51045BD6B /* CityFootprintView.swift */,
+				5B88CEA0C6EAD3BC42FA3F15 /* CityPickerView.swift */,
 				9D323D1037AEAA5EED00F936 /* FlightInput.swift */,
 				07C7A3150EA2F9A624862AB6 /* FlightView.swift */,
 				EC9B8E98AF7CBF37870F4C92 /* Footprint.swift */,
@@ -352,6 +388,7 @@
 				B15A657C3B7E9C494EBCDB3C /* KeyLegendView.swift */,
 				4ADA1049415905A193453E20 /* MetalView.swift */,
 				F21660003787A6E7EF9C78C0 /* PerfLog.swift */,
+				AB17EC898D8D06F4D03375F8 /* QuitSource.swift */,
 				352208BC8154B1C595C6DE55 /* RouteListView.swift */,
 				19FD429F642ECD72AB208E40 /* SettingsView.swift */,
 				30D5F1756B44C48DE448931F /* SnapshotHook.swift */,
@@ -363,10 +400,13 @@
 		DD683E3A7F188623A616FFCD /* City */ = {
 			isa = PBXGroup;
 			children = (
+				C10501F77014B146B12158E2 /* CityCatalog.swift */,
 				A5A0A15CC970BADDBC8DB283 /* CityPackage.swift */,
 				45187925AE49CABDF9924A89 /* Manifest.swift */,
 				CE4925D6671D5C4D6AA0D22E /* PackageWriter.swift */,
+				A98016908345B4B0A005B287 /* RecipeList.swift */,
 				5DB375CA51692B867003FBCA /* StreetGraph.swift */,
+				0E52EDDBAE43CDE0E5B9AD1C /* StreetGraphParser.swift */,
 				C141914AEAE040FD34B262D5 /* TileIndex.swift */,
 				8296E7EA7F9CEDFD55248D0F /* TileSpill.swift */,
 			);
@@ -379,6 +419,7 @@
 				284000E1D7B97989DDC7C120 /* AircraftModel.swift */,
 				D54BADC2BBACA09A06D90FFB /* AutoOrbit.swift */,
 				7EC7FFEAA836691BE5902A6D /* Camera.swift */,
+				E6CFDF9DF497767FCFFFD56C /* DrawDistancePolicy.swift */,
 				058435BB6C2BFDFB1FF99B9C /* Frustum.swift */,
 				96F0DBB2ED16C77621010605 /* LevelOfDetail.swift */,
 				2A5797B763F49AEBFB16FD07 /* Offscreen.swift */,
@@ -488,6 +529,7 @@
 				D9E9A748A08AC93885D84266 /* Assets.xcassets in Resources */,
 				298AEB7678FB3010B0A110B5 /* gymnopedie_1.loopmap.json in Resources */,
 				09F5CF338F9E0313C26E57F5 /* gymnopedie_1.mid in Resources */,
+				866D3784CE4805D93FD0D0AF /* recipes.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -502,6 +544,8 @@
 				B6C5734561B2CF2B3D6EB517 /* AppModel.swift in Sources */,
 				F5854168578F7EB9C094FCB0 /* BSSBrand.swift in Sources */,
 				282AD65ECA1066876A0ADEE7 /* CathedralSheet.swift in Sources */,
+				493601D5087071C85FD89A69 /* CityFootprintView.swift in Sources */,
+				7A60C218032BFFE969A073C9 /* CityPickerView.swift in Sources */,
 				59EECB62981EEBBF1E5F9A6E /* EmptyStateView.swift in Sources */,
 				60AA31BE204E31BF52AE4A03 /* FlightInput.swift in Sources */,
 				65FAE7E0037DED2A52F4A86A /* FlightView.swift in Sources */,
@@ -511,6 +555,7 @@
 				EAB588C03B2F4AFF3C2F0585 /* KeyLegendView.swift in Sources */,
 				4C124CD0E60A892EB77285C4 /* MetalView.swift in Sources */,
 				A3FCC9B9CADC9366AEB55112 /* PerfLog.swift in Sources */,
+				CEE04BC370AFEE531FF6E9BD /* QuitSource.swift in Sources */,
 				ABE5E4770FB4A8D7699086D2 /* RouteListView.swift in Sources */,
 				D9CE5DD0028199087C075FB6 /* SettingsView.swift in Sources */,
 				D08430C4BF9DEEB3442738D6 /* SnapshotHook.swift in Sources */,
@@ -528,9 +573,12 @@
 				AE804F33F23967D0A717069E /* Camera.swift in Sources */,
 				1FAA459E93A5A45D383FA0FC /* CathedralFinder.swift in Sources */,
 				C99310FBC5C43F3020DD059E /* ChaseCamera.swift in Sources */,
+				6481CBE375D6A01389AC5CE7 /* ChooseMap.swift in Sources */,
+				888762E70EE2A7FB52E1ECA1 /* CityCatalog.swift in Sources */,
 				D01842B43E0A3B690320F9B0 /* CityPackage.swift in Sources */,
 				6548B9FE9C01D3C3EB6631A8 /* CrossfadePlan.swift in Sources */,
 				429F8B209256A9E896EE0B0B /* CrossfadePlayer.swift in Sources */,
+				7EAC63C0869E76EA3142E68D /* DrawDistancePolicy.swift in Sources */,
 				9022620C77BB7952B352DE33 /* DryRun.swift in Sources */,
 				835866A8FC38438178C0A7B7 /* EarClip.swift in Sources */,
 				5CD777B330C1CD581016B9EA /* EndlessFlight.swift in Sources */,
@@ -546,6 +594,7 @@
 				58580193FF9D8A51BA7AC741 /* LocalFrame.swift in Sources */,
 				FBA61DD0BB81FB8B5DF3BD31 /* MIDIMusic.swift in Sources */,
 				A4AF2DAE20FA4B08ED134053 /* Manifest.swift in Sources */,
+				69D770AFA391F9AE0CD1E6DA /* ModeExclusion.swift in Sources */,
 				ED3D5555F7491BC0CD779400 /* MouseFlight.swift in Sources */,
 				058BA4C4A1EC83E414A943FA /* MusicLibrary.swift in Sources */,
 				F2F5EA27C68BFED0CD393904 /* MusicSource.swift in Sources */,
@@ -556,6 +605,7 @@
 				2CAC0521C1D5620219D0B8C0 /* ProfilePlot.swift in Sources */,
 				267262B13B60A6EDC73A745A /* ProfileRepair.swift in Sources */,
 				C6A492121ADE1DAAF2A9D665 /* ProfileSmoother.swift in Sources */,
+				E865519254ACEDFF9EC6F7EB /* RecipeList.swift in Sources */,
 				BD7ADE07631003533348D002 /* RenderScale.swift in Sources */,
 				BD106084739B89B085A7F75B /* Renderer.swift in Sources */,
 				D6C40218FE093190690544D2 /* RiverRoute.swift in Sources */,
@@ -567,6 +617,8 @@
 				B59A459AE5283EED1D3C5AF4 /* Shaders.swift in Sources */,
 				A7BD7A6629612A9F8D342F7E /* Simulation.swift in Sources */,
 				2173D476585A84C96148E537 /* StreetGraph.swift in Sources */,
+				2BBA8D7550387A1CEF220D58 /* StreetGraphParser.swift in Sources */,
+				37983E6EB02F5FFB3533A069 /* StreetIndex.swift in Sources */,
 				44796739488F3A740E4D0AFA /* StreetOverlay.swift in Sources */,
 				6D7D36050BCDD847D6A75E98 /* StreetPicker.swift in Sources */,
 				093A7EDE7570DAEF6FA25DCE /* TileIndex.swift in Sources */,
@@ -683,7 +735,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Gullfire;
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
@@ -693,7 +745,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.github.big-shame-software.Gullfire";
 				SDKROOT = macosx;
 			};
@@ -801,7 +853,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Gullfire;
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
@@ -811,7 +863,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "io.github.big-shame-software.Gullfire";
 				SDKROOT = macosx;
 			};

@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Prepare a city package's raw inputs.
 
-Usage:  uv run --with overturemaps --with shapely Tools/fetch_city.py chicago
+Usage:  uv run --with overturemaps --with numpy --with shapely Tools/fetch_city.py chicago [--out DIR] [--overture-release latest|ID]
+
+The data comes from one Overture release, named once in Resources/Recipes/recipes.json (the release
+the maps were tested on). --overture-release ID uses another; "latest" uses the newest, which has not
+been tested with Gullfire. If the release is no longer published, it stops before downloading anything.
 
 Downloads four Overture Maps layers for the city's bounding box (skipped when
 already present), clips water to the box, derives the river centreline chains
@@ -39,7 +43,7 @@ CITIES = {
     },
     "chicagocity": {
         "name": "ChicagoCity",
-        "bbox": (-87.945, 41.640, -87.520, 42.025),   # about 1,450 km²: the city limits and the suburbs in the rectangle (rung B)
+        "bbox": (-87.945, 41.640, -87.520, 42.025),   # about 1,500 km²: the city limits and the suburbs in the rectangle (rung B)
         "origin": (-87.635, 41.885),
     },
     "cookcounty": {
@@ -84,7 +88,40 @@ def read_lines(path):
                 yield json.loads(line)
 
 
-def download(city, layer, raw_dir):
+RECIPES = os.path.join(ROOT, "Resources", "Recipes", "recipes.json")
+
+
+def pinned_release():
+    """The release the maps were tested on: the one name in recipes.json."""
+    with open(RECIPES, encoding="utf-8") as fh:
+        return json.load(fh)["overtureRelease"]
+
+
+def available_releases():
+    """The releases Overture still publishes. GULLFIRE_OVERTURE_RELEASES (comma separated) replaces the
+    catalogue, so the tests need no network."""
+    fake = os.environ.get("GULLFIRE_OVERTURE_RELEASES")
+    if fake is not None:
+        return [r for r in fake.split(",") if r], (fake.split(",")[-1] if fake else "")
+    from overturemaps.core import get_available_releases
+    return get_available_releases()
+
+
+def resolve_release(requested):
+    """Return the release id to download, or None (after printing why) when it is not published."""
+    releases, newest = available_releases()
+    if requested == "latest":
+        return newest
+    if requested in releases:
+        return requested
+    print(f"Overture release {requested} is no longer published (published now: {', '.join(releases)}).\n"
+          "Nothing was downloaded.\n"
+          "--overture-release latest builds from the newest release instead. It has not been tested with Gullfire:\n"
+          "its data differs, so the map, its routes and its street counts may differ too.", file=sys.stderr)
+    return None
+
+
+def download(city, layer, raw_dir, release):
     out = os.path.join(raw_dir, f"{layer}.geojsonl")
     if os.path.exists(out):
         return out
@@ -95,6 +132,7 @@ def download(city, layer, raw_dir):
         "-f", "geojsonseq",
         f"--type={layer}",
         "-o", out,
+        "-r", release,
     ]
     print("downloading", layer, flush=True)
     subprocess.run(cmd, check=True)
@@ -314,18 +352,47 @@ def attribution(licences):
 
 
 def main(argv):
-    if len(argv) != 2 or argv[1] not in CITIES:
-        print("usage: fetch_city.py <" + "|".join(CITIES) + ">", file=sys.stderr)
+    # fetch_city.py <id> [--out DIR]: DIR holds the city folders; the default is Cities/ in this project.
+    out_root = os.path.join(ROOT, "Cities")
+    requested = pinned_release()
+    args = list(argv[1:])
+    rest = []
+    while args:
+        a = args.pop(0)
+        if a in ("--out", "--overture-release") and args:
+            v = args.pop(0)
+            if a == "--out":
+                out_root = os.path.abspath(v)
+            else:
+                requested = v
+        else:
+            rest.append(a)
+    if len(rest) != 1 or rest[0] not in CITIES:
+        print("usage: fetch_city.py <" + "|".join(CITIES) + "> [--out DIR] [--overture-release latest|ID]", file=sys.stderr)
         return 2
+    argv = [argv[0], rest[0]]
     city = CITIES[argv[1]]
-    city_dir = os.path.join(ROOT, "Cities", city["name"])
+    city_dir = os.path.join(out_root, city["name"])
     raw_dir = os.path.join(city_dir, "raw")
     os.makedirs(raw_dir, exist_ok=True)
     to_local = local_frame(city["origin"])
 
-    for layer in LAYERS:
-        download(city, layer, raw_dir)
+    missing = [l for l in LAYERS if not os.path.exists(os.path.join(raw_dir, f"{l}.geojsonl"))]
+    if missing:
+        wanted = resolve_release(requested)
+        if wanted is None:
+            return 1
+        for layer in missing:
+            download(city, layer, raw_dir, wanted)
+    else:
+        wanted = None
     release = release_from_state(raw_dir)
+    if wanted is None:
+        wanted = release if requested == "latest" else requested
+    if release != wanted:
+        print(f"{raw_dir} holds Overture release {release}, not {wanted}. Delete that folder to fetch {wanted}, "
+              f"or pass --overture-release {release}.", file=sys.stderr)
+        return 1
     clip_water(city, raw_dir, to_local)
     chains = derive_river(city, raw_dir, to_local, city_dir)
 
@@ -336,6 +403,7 @@ def main(argv):
         "bbox": {"minLon": minx, "minLat": miny, "maxLon": maxx, "maxLat": maxy},
         "origin": {"lon": city["origin"][0], "lat": city["origin"][1]},
         "overtureRelease": release,
+        "overtureRequested": requested,
         "generatedUtc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
         "layers": LAYERS,
         "attribution": attribution(licences),

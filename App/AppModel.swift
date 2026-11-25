@@ -108,6 +108,18 @@ final class AppModel {
     var noticeUntil = 0.0
 
     private(set) var city: CityPackage?
+    /// The maps the picker lists. Empty when `GULLFIRE_CITY` chose the map, or when none were found.
+    private(set) var catalog: [CityEntry] = []
+    /// The display names for the picker, from the shipped recipe list. Empty if the file is missing, so
+    /// the picker falls back to the folder names.
+    let recipes: RecipeList = {
+        guard let url = Bundle.main.url(forResource: "recipes", withExtension: "json"),
+              let list = try? RecipeList.load(url) else { return RecipeList(format: 1, recipes: []) }
+        return list
+    }()
+    private static let lastCityKey = "lastCity"
+    /// The folder of the map flown last, so the picker can preselect it.
+    var lastCityPath: String? { Self.defaults.string(forKey: Self.lastCityKey) }
     var session = SessionLog()
     let timing = PerfLog()
 
@@ -203,12 +215,24 @@ final class AppModel {
             mouseSensitivity = min(4, max(0.25, Self.defaults.double(forKey: Self.mouseSensitivityKey)))
         }
         mouseInvert = Self.defaults.bool(forKey: Self.mouseInvertKey)
-        do {
-            city = try CityPackage.open(directory: Self.cityDirectory())
-            timing.mark("city package opened")
-            timing.checkpoint("mark 1 CityPackage.open")
-        } catch {
-            problem = "Could not open the city package: \(error)"
+        if ProcessInfo.processInfo.environment["GULLFIRE_CITY"] != nil {
+            // A named map flies straight away, as before: no picker, so scripts and renders are unchanged.
+            do {
+                city = try CityPackage.open(directory: Self.cityDirectory())
+                timing.mark("city package opened")
+                timing.checkpoint("mark 1 CityPackage.open")
+            } catch {
+                problem = "Could not open the city package: \(error)"
+            }
+        } else {
+            catalog = CityCatalog.scan(roots: Self.cityRoots())
+            timing.mark("city catalog scanned")
+            // One map installed (a 1.2 install): it flies straight away, with no picker.
+            if catalog.count == 1, let only = catalog.first {
+                chooseCity(only)
+                timing.mark("city package opened")
+                timing.checkpoint("mark 1 CityPackage.open")
+            }
         }
         if let path = Self.defaults.string(forKey: Self.musicFolderKey) {
             musicFolder = URL(fileURLWithPath: path, isDirectory: true)
@@ -250,6 +274,7 @@ final class AppModel {
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
+                print("gullfire: quit requested: \((QuitSource.shared?.described ?? "menu or key"))")   // every quit, in every build
                 guard let self, !self.logWritten else { return }
                 self.writeLog(runSeconds: nil)
             }
@@ -269,7 +294,8 @@ final class AppModel {
                 }
             }
         }
-        if let limit = ProcessInfo.processInfo.environment["GULLFIRE_SECONDS"].flatMap(Double.init) {
+        // An offscreen run ends on its own frame clock instead (FlightRenderer.drawFrame), so a slow Mac does not shorten it.
+        if !FlightRenderer.offscreenRun, let limit = ProcessInfo.processInfo.environment["GULLFIRE_SECONDS"].flatMap(Double.init) {
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(limit))
                 // Log before leaving full screen, so the quit transition is not in the run's numbers.
@@ -277,6 +303,64 @@ final class AppModel {
                 NSApplication.shared.terminate(nil)
             }
         }
+    }
+
+    /// The folders the picker searches, in order (the first copy of a map name wins): `GULLFIRE_CITIES`
+    /// (a folder of packages, optional), then `~/Library/Application Support/Gullfire/Cities`, then the
+    /// relative `Cities` folder when running from the project.
+    static func cityRoots() -> [URL] {
+        var roots: [URL] = []
+        if let path = ProcessInfo.processInfo.environment["GULLFIRE_CITIES"] {
+            roots.append(URL(fileURLWithPath: path, isDirectory: true))
+            // Capture builds: GULLFIRE_CITIES_ONLY=1 searches that folder alone, so a capture shows the maps it names.
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["GULLFIRE_CITIES_ONLY"] == "1" { return roots }
+            #endif
+        }
+        roots.append(FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Gullfire/Cities", isDirectory: true))
+        roots.append(URL(fileURLWithPath: "Cities", isDirectory: true))
+        return roots
+    }
+
+    /// Opens a map and flies it. On failure the picker stays up and says why.
+    func chooseCity(_ entry: CityEntry) {
+        do {
+            city = try CityPackage.open(directory: entry.directory)
+            problem = nil
+            Self.defaults.set(entry.directory.path, forKey: Self.lastCityKey)
+        } catch {
+            problem = "Could not open \(entry.name): \(error)"
+        }
+    }
+
+    /// Asks for any map folder and opens it, for maps outside the searched folders.
+    func chooseCityFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.message = "Choose a map folder: one that holds manifest.json and the solids, lines and obstacles files."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let entry = CityCatalog.describe(url) {
+            chooseCity(entry)
+        } else {
+            problem = "\(url.lastPathComponent) is not a map package: it needs manifest.json, solids.bin, lines.bin and obstacles.bin."
+        }
+    }
+
+    /// Whether Flight ▸ Choose Map… (Command-O) does anything: in flight, with a second map to choose.
+    var canChooseMap: Bool { ChooseMap.isAvailable(inFlight: city != nil, mapCount: catalog.count) }
+
+    /// Flight ▸ Choose Map…: back to the picker. Dropping the city drops the flight view, and with it the
+    /// renderer and its buffers, so two maps are never resident at once.
+    func returnToPicker() {
+        guard canChooseMap else { return }
+        flight = nil
+        city = nil
+        problem = nil
+        catalog = CityCatalog.scan(roots: Self.cityRoots())
     }
 
     /// Where the package is. `GULLFIRE_CITY` wins. Otherwise the first folder that holds a

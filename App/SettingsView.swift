@@ -2,19 +2,23 @@ import AppKit
 import GullfireKit
 import SwiftUI
 
-/// The Settings window (Gullfire > Settings): a Music tab and a View tab, each a grouped form at a fixed width.
+/// The Settings window (Gullfire > Settings): Music, View and Maps tabs, each a grouped form at a fixed width.
 /// System controls, colours and type only; no brand styling inside the window. The choices are the
 /// ones the keys already use, so nothing an install saved is lost.
 struct SettingsView: View {
     @Bindable var model: AppModel
     @State private var tab: Tab = SettingsView.startTab
 
-    enum Tab: Hashable { case music, view }
+    enum Tab: Hashable { case music, view, maps }
 
     #if DEBUG
-    /// Test hook for the screenshots, Debug builds only: GULLFIRE_SETTINGS_TAB=view opens the View tab first.
+    /// Test hook for the screenshots, Debug builds only: GULLFIRE_SETTINGS_TAB=view or =maps opens that tab first.
     private static var startTab: Tab {
-        ProcessInfo.processInfo.environment["GULLFIRE_SETTINGS_TAB"] == "view" ? .view : .music
+        switch ProcessInfo.processInfo.environment["GULLFIRE_SETTINGS_TAB"] {
+        case "view": .view
+        case "maps": .maps
+        default: .music
+        }
     }
     #else
     private static var startTab: Tab { .music }
@@ -28,8 +32,123 @@ struct SettingsView: View {
             ViewSettingsTab(model: model)
                 .tabItem { Label("View", systemImage: "eye") }
                 .tag(Tab.view)
+            MapsSettingsTab(model: model)
+                .tabItem { Label("Maps", systemImage: "map") }
+                .tag(Tab.maps)
         }
         .frame(width: 520)
+    }
+}
+
+/// The Maps tab: the maps the app found, and the maps this Mac can build that are not installed yet, each with
+/// its needs and the command to run. The app never downloads or builds; it only shows the command to copy.
+struct MapsSettingsTab: View {
+    @Bindable var model: AppModel
+    @State private var copied: String?
+
+    /// Installed maps are matched to recipes by the recipe's folder name and the catalog entry's name.
+    private var installedNames: Set<String> {
+        Set(model.catalog.map(\.name))
+    }
+
+    private var memoryGB: Double {
+        #if DEBUG
+        // Test hook for the screenshots, Debug builds only: GULLFIRE_FAKE_RAM_GB=8 shows the list as a small Mac sees it.
+        if let fake = ProcessInfo.processInfo.environment["GULLFIRE_FAKE_RAM_GB"].flatMap(Double.init) { return fake }
+        #endif
+        return Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+    }
+
+    /// Free disk on the volume that holds the home folder, in GB. Nil when the system does not say.
+    private var freeDiskGB: Double? {
+        #if DEBUG
+        // Test hook for the screenshots, Debug builds only: GULLFIRE_FAKE_FREE_GB=20 shows the list as a small disk sees it.
+        if let fake = ProcessInfo.processInfo.environment["GULLFIRE_FAKE_FREE_GB"].flatMap(Double.init) { return fake }
+        #endif
+        guard let bytes = try? URL(fileURLWithPath: NSHomeDirectory())
+            .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+            .volumeAvailableCapacityForImportantUsage else { return nil }
+        return Double(bytes) / 1_073_741_824
+    }
+
+    /// The recipes this Mac can build that are not installed, in the recipe list's order, and whether the disk
+    /// could not be checked (then every recipe that fits the memory is listed).
+    private var buildResult: (recipes: [RecipeList.Recipe], diskUnknown: Bool) {
+        model.recipes.buildable(memoryGB: memoryGB, freeDiskGB: freeDiskGB, installedFolders: installedNames)
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                if model.catalog.isEmpty {
+                    Text("No maps installed yet.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.catalog) { entry in
+                        LabeledContent(model.recipes.displayName(forFolder: entry.directory.lastPathComponent)) {
+                            Text("\(CityPickerView.area(entry)), \(CityPickerView.disk(entry)) on disk")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Installed")
+            }
+
+            Section {
+                let result = buildResult
+                if result.diskUnknown {
+                    Text("Couldn't check free disk space.")
+                        .foregroundStyle(.secondary)
+                }
+                if result.recipes.isEmpty {
+                    Text("Every map this Mac can build is installed.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(result.recipes) { recipe in
+                        buildRow(recipe)
+                    }
+                }
+            } header: {
+                Text("Build another map")
+            }
+
+            Section {
+                Text("Gullfire never downloads anything. Run the command in a terminal from the project folder. These figures come from one 48 GB Mac.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding()
+    }
+
+    private func buildRow(_ recipe: RecipeList.Recipe) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(recipe.displayName).font(.headline)
+            Text("Area \(Int(recipe.areaKm2).formatted()) km²")
+            Text("download about \(recipe.downloadMB) MB")
+            Text("needs \(RecipeList.Recipe.gigabytes(recipe.freeDiskGB)) GB free disk")
+            Text("build uses up to \(RecipeList.Recipe.gigabytes(recipe.buildPeakGB)) GB of memory")
+            Text("about \(recipe.approxMinutes) minutes")
+            HStack(spacing: 8) {
+                Text(recipe.command)
+                    .font(.system(.callout, design: .monospaced))
+                    .textSelection(.enabled)
+                Spacer(minLength: 4)
+                Button(copied == recipe.id ? "Copied" : "Copy") {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(recipe.command, forType: .string)
+                    copied = recipe.id
+                }
+                .accessibilityLabel("Copy command for \(recipe.displayName)")
+            }
+            .padding(.top, 2)
+        }
+        .font(.callout)
+        .padding(.vertical, 2)
     }
 }
 

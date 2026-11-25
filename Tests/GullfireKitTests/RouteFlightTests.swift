@@ -89,9 +89,12 @@ struct RouteFlightTests {
         Self.nudgeReport(try Self.route("river", in: dir), city: city, seconds: 600)
     }
 
+    /// 600 s, or long enough to fly the whole lap at 12 m/s or better: the big maps' Scenic and River laps run to 100 km.
+    static func lapSeconds(_ route: Route) -> Double { max(600, (route.length / 12).rounded(.up)) }
+
     @Test(arguments: PackageTests.cities) func autopilotOnTheRiverRouteFor600Seconds(dir: URL) throws {
         let city = try CityPackage.open(directory: dir)
-        let f = Self.flyAutopilot(try Self.route("river", in: dir), city: city, seconds: 600)
+        let f = Self.flyAutopilot(try Self.route("river", in: dir), city: city, seconds: Self.lapSeconds(try Self.route("river", in: dir)))
         print(String(format: "ROUTE river: min alt %.1f m, min clearance %.1f m, max bank %.1f deg, outside %.1f s, distance %.0f m, nudges %d, avoidance %.1f s",
                      f.minAltitude, f.minClearance, f.maxBank, f.outsideSeconds, f.lapDistance, f.nudges, f.warnings))
         #expect(f.minAltitude >= FlightTuning().floor)
@@ -104,7 +107,7 @@ struct RouteFlightTests {
 
     @Test(arguments: PackageTests.cities) func autopilotOnTheScenicRouteFor600Seconds(dir: URL) throws {
         let city = try CityPackage.open(directory: dir)
-        let f = Self.flyAutopilot(try Self.route("scenic", in: dir), city: city, seconds: 600)
+        let f = Self.flyAutopilot(try Self.route("scenic", in: dir), city: city, seconds: Self.lapSeconds(try Self.route("scenic", in: dir)))
         print(String(format: "ROUTE scenic: min alt %.1f m, min clearance %.1f m, max bank %.1f deg, outside %.1f s, distance %.0f m, nudges %d, avoidance %.1f s",
                      f.minAltitude, f.minClearance, f.maxBank, f.outsideSeconds, f.lapDistance, f.nudges, f.warnings))
         #expect(f.minAltitude >= FlightTuning().floor)

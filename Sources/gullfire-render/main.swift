@@ -109,6 +109,8 @@ do {
         renderer.culling = !options.flags.contains("no-cull")
         renderer.drawDistance = options.values["draw-distance"].flatMap { Float($0) }
         renderer.levelOfDetail = options.lod()
+        // `--segment-budget K` (thousands): the option under test; it settles over frames, so use it with `--repeat` or `--eye-to`.
+        renderer.segmentBudget = options.values["segment-budget"].flatMap { Int($0) }.map { $0 * 1000 }
         if let text = options.values["aircraft"] {
             let v = text.split(separator: ",").compactMap { Double($0) }
             guard v.count >= 4, v.count <= 6 else { fail("--aircraft must look like east,north,alt,headingDeg[,pitchDeg,bankDeg]", status: 2) }
@@ -122,6 +124,24 @@ do {
         let camera = eye.flatMap { e in look.map { Camera(eye: e, target: $0) } } ?? view.camera(in: frame)
         // `--repeat N` renders the same frame N times and reports the last. The first frame of a
         // run also pays for paging in the mapped package, so a single frame is not a fair timing.
+        // `--eye-to e,n,alt --frames N --out PREFIX`: the camera moves in a straight line from `--eye` to `--eye-to` over N frames
+        // (looking the same way), and PREFIX-<i>.png is written every `--every` frames, with the distance in use printed.
+        if let to = point("eye-to"), let eye, let look {
+            let frames = max(2, Int(options.values["frames"] ?? "600") ?? 600), every = max(1, Int(options.values["every"] ?? "100") ?? 100)
+            let prefix = options.required("out")
+            for i in 0..<frames {
+                let f = Float(i) / Float(frames - 1)
+                let e = eye + (to - eye) * f
+                let gpuTime = try renderer.render(camera: Camera(eye: e, target: look + (to - eye) * f), palette: options.palette(),
+                                                  drawHidden: !options.flags.contains("no-hidden"))
+                if i % every == 0 || i == frames - 1 {
+                    print(String(format: "frame %d: segments %d, distance in use %.0f m, gpu %.2f ms", i, renderer.lastSegmentsDrawn,
+                                 renderer.activeDistanceInUse ?? 0, gpuTime * 1000))
+                    try renderer.writePNG(to: URL(fileURLWithPath: "\(prefix)-\(String(format: "%04d", i)).png"))
+                }
+            }
+            break
+        }
         let repeats = max(1, Int(options.values["repeat"] ?? "1") ?? 1)
         var gpu = 0.0
         var warm: [Double] = []

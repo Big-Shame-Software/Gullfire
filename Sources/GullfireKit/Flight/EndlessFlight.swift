@@ -18,8 +18,9 @@ public struct EndlessFlight: Sendable {
     private let joinSettings: JoinSettings
 
     /// nil when the package has no street graph (`StreetGraph.load` returns nil) or when loading it throws.
-    public init?(city: CityPackage, seed: UInt64) {
-        guard let graph = try? StreetGraph.load(from: city.directory) else { return nil }
+    /// `graph` is the street graph already loaded (the app loads it once, off the main thread); without it the file is read here.
+    public init?(city: CityPackage, seed: UInt64, graph preloaded: StreetGraph? = nil) {
+        guard let graph = preloaded ?? (try? StreetGraph.load(from: city.directory)) else { return nil }
         self.seed = seed
         self.city = city
         self.graph = graph
@@ -31,11 +32,22 @@ public struct EndlessFlight: Sendable {
     /// nil only when 12 seeds in a row fail; loopNumber is then left as it was.
     private var lastStretchIDs: [String] = []
 
+    /// Can the loop after this one be built? The next loop starts with this plan's second stretch in the same direction, so that
+    /// stretch must be one the build marked as able to start a loop. A plan whose second stretch is not marked can never be
+    /// chained: every retry walks the same stretch and fails the same way (1.3 spike: ChicagoCity seed 1, CookCounty seed 6).
+    /// True when the package was never checked (no marks), as `canStart` is.
+    static func isChainable(_ plan: RoutePlan) -> Bool {
+        guard plan.stretches.count >= 2 else { return false }
+        let second = plan.stretches[1]
+        return second.stretch.canStart(reversed: second.reversed)
+    }
+
     public mutating func nextLoop() -> (route: Route, plan: RoutePlan)? {
         var offset = loopNumber
         for _ in 0..<Self.maxSeedsInARow {
             let trySeed = seed &+ UInt64(offset)
-            if let plan = RouteWalker.loop(graph: graph, obstacles: city, seed: trySeed, joinSettings: joinSettings) {
+            if let plan = RouteWalker.loop(graph: graph, obstacles: city, seed: trySeed, joinSettings: joinSettings),
+               Self.isChainable(plan) {
                 // Back-to-back loops must differ: on a small package adjacent seeds can make the same loop.
                 let ids = plan.stretches.map { $0.stretch.id }
                 if ids == lastStretchIDs { offset += 1; continue }
@@ -61,7 +73,7 @@ public struct EndlessFlight: Sendable {
         for _ in 0..<Self.maxSeedsInARow {
             let trySeed = seed &+ UInt64(offset)
             if let next = RouteWalker.loop(graph: graph, obstacles: city, seed: trySeed, joinSettings: joinSettings,
-                                           startingWith: start) {
+                                           startingWith: start), Self.isChainable(next) {
                 let ids = next.stretches.map { $0.stretch.id }
                 if ids == lastStretchIDs { offset += 1; continue }
                 lastStretchIDs = ids
@@ -82,19 +94,29 @@ public struct EndlessFlight: Sendable {
     /// the one used. When all 12 fail, nil is returned and loopNumber advances by 12, so a retry tries seeds not yet tried.
     public mutating func firstLoop(startingWith id: String, reversed: Bool) -> (route: Route, plan: RoutePlan)? {
         var offset = loopNumber
+        // A loop whose second stretch can start a loop chains on; failing that, the first loop any seed makes (the pick is
+        // honoured even when the flight afterwards cannot chain; it keeps flying that loop).
+        var fallback: (offset: Int, plan: RoutePlan)?
         for _ in 0..<Self.maxSeedsInARow {
             let trySeed = seed &+ UInt64(offset)
             if let plan = RouteWalker.loop(graph: graph, obstacles: city, seed: trySeed, joinSettings: joinSettings,
                                            startingWith: (id: id, reversed: reversed)) {
-                lastStretchIDs = plan.stretches.map { $0.stretch.id }
-                loopNumber = offset + 1
-                let file = RouteFile(name: "Endless \(loopNumber)", closed: true, waypoints: plan.assembly.waypoints)
-                return (Route(file: file).prepared(obstacles: city), plan)
+                if Self.isChainable(plan) { return accept(plan, offset: offset) }
+                if fallback == nil { fallback = (offset, plan) }
             }
             offset += 1
         }
+        if let fallback { return accept(fallback.plan, offset: fallback.offset) }
         loopNumber += Self.maxSeedsInARow
         return nil
+    }
+
+    /// Records `plan` (made from the seed at `offset`) as the loop in hand and returns it as a route.
+    private mutating func accept(_ plan: RoutePlan, offset: Int) -> (route: Route, plan: RoutePlan) {
+        lastStretchIDs = plan.stretches.map { $0.stretch.id }
+        loopNumber = offset + 1
+        let file = RouteFile(name: "Endless \(loopNumber)", closed: true, waypoints: plan.assembly.waypoints)
+        return (Route(file: file).prepared(obstacles: city), plan)
     }
 
     /// The first loop of a pick from a list of candidate streets, in order (the clicked street first, then the nearest

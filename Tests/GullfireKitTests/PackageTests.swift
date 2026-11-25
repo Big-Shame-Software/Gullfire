@@ -10,7 +10,10 @@ struct PackageTests {
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     static let chicago = root.appendingPathComponent("Cities/Chicago", isDirectory: true)
     /// Every built city that also has both cruise routes. Chicago was the first; Vienna the second.
-    static let cities: [URL] = ["Chicago", "Vienna"].map { root.appendingPathComponent("Cities/\($0)", isDirectory: true) }
+    /// GULLFIRE_ROUTE_DIRS (absolute folders, separated by colons) names the packages instead, for packages built elsewhere.
+    static let cities: [URL] = (ProcessInfo.processInfo.environment["GULLFIRE_ROUTE_DIRS"].map {
+            $0.split(separator: ":").map { URL(fileURLWithPath: String($0), isDirectory: true) }
+        } ?? ["Chicago", "Vienna"].map { root.appendingPathComponent("Cities/\($0)", isDirectory: true) })
         .filter { dir in
             ["manifest.json", "routes/river.json", "routes/scenic.json"].allSatisfy {
                 FileManager.default.fileExists(atPath: dir.appendingPathComponent($0).path)

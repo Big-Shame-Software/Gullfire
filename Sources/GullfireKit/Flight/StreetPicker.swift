@@ -79,10 +79,11 @@ public enum StreetPicker {
         aircraftHeading: Double,
         graph: StreetGraph,
         obstacles: ObstacleSource,
-        maxSnap: Double = 80
+        maxSnap: Double = 80,
+        index: StreetIndex? = nil
     ) -> StreetPick? {
         candidates(camera: camera, ndc: ndc, aspect: aspect, aircraftHeading: aircraftHeading, graph: graph,
-                   obstacles: obstacles, maxSnap: maxSnap, limit: 1).first
+                   obstacles: obstacles, maxSnap: maxSnap, limit: 1, index: index).first
     }
 
     /// The ground hit's nearby streets, nearest first: every stretch whose centre line is within `maxSnap` metres of the hit,
@@ -96,15 +97,18 @@ public enum StreetPicker {
         graph: StreetGraph,
         obstacles: ObstacleSource,
         maxSnap: Double = 600,
-        limit: Int = 6
+        limit: Int = 6,
+        index: StreetIndex? = nil
     ) -> [StreetPick] {
         let ray = camera.ray(ndc: ndc, aspect: aspect)
         guard limit > 0, let hit = groundHit(origin: ray.origin, direction: ray.direction, obstacles: obstacles) else { return [] }
 
+        // With an index, only the stretches near the hit are measured; the sort below makes the order the same either way.
+        let pool: [Int] = index?.candidateIndices(near: hit, within: maxSnap) ?? Array(graph.stretches.indices)
         var near: [(index: Int, distance: Double)] = []
-        for (index, stretch) in graph.stretches.enumerated() where stretch.canStartAny {
-            let d = distance(from: hit, to: stretch)
-            if d <= maxSnap { near.append((index, d)) }
+        for candidate in pool where graph.stretches[candidate].canStartAny {
+            let d = distance(from: hit, to: graph.stretches[candidate])
+            if d <= maxSnap { near.append((candidate, d)) }
         }
         near.sort { $0.distance != $1.distance ? $0.distance < $1.distance : $0.index < $1.index }
 

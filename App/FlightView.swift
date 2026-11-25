@@ -31,7 +31,16 @@ struct FlightView: View {
             if let size = ProcessInfo.processInfo.environment["GULLFIRE_WINDOW_SIZE"]?.split(separator: "x").compactMap({ Double($0) }),
                size.count == 2 {
                 DispatchQueue.main.async {
-                    NSApplication.shared.windows.first(where: { $0.isVisible })?.setContentSize(NSSize(width: size[0], height: size[1]))
+                    let window = NSApplication.shared.windows.first(where: { $0.isVisible })
+                    window?.setContentSize(NSSize(width: size[0], height: size[1]))
+                    // GULLFIRE_WINDOW_CORNER=bottomright|bottomleft|topright|topleft puts the window in that corner of the main screen
+                    // (the visible frame, so clear of the Dock and menu bar): a memory run that keeps the window uncovered.
+                    if let corner = ProcessInfo.processInfo.environment["GULLFIRE_WINDOW_CORNER"], let window, let screen = NSScreen.main {
+                        let v = screen.visibleFrame, f = window.frame
+                        let x = corner.hasSuffix("right") ? v.maxX - f.width : v.minX
+                        let y = corner.hasPrefix("top") ? v.maxY - f.height : v.minY
+                        window.setFrameOrigin(NSPoint(x: x, y: y))
+                    }
                 }
             }
             #endif

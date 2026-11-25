@@ -362,24 +362,30 @@ struct SmoothnessTests {
 
     @Test(.enabled(if: SmoothnessTests.reportEnabled)) func bumpinessReport() throws {
         let seconds = ProcessInfo.processInfo.environment["GULLFIRE_SMOOTH_SECONDS"].flatMap(Double.init) ?? 420
-        let city = try CityPackage.open(directory: PackageTests.chicago)
-        let routes = PackageTests.chicago.appendingPathComponent("routes", isDirectory: true)
-
-        var flights: [(name: String, route: Route)] = []
-        flights.append(("scenic", try Route.load(routes.appendingPathComponent("scenic.json"))))
-        flights.append(("river", try Route.load(routes.appendingPathComponent("river.json"))))
-        for n in 1...6 where FileManager.default.fileExists(atPath: routes.appendingPathComponent("street-\(n).json").path) {
-            flights.append(("street-\(n)", try Route.load(routes.appendingPathComponent("street-\(n).json")).preparedIfStreet(obstacles: city)))
-        }
-        for seed in 1...6 {
-            var endless = try #require(EndlessFlight(city: city, seed: UInt64(seed)))
-            guard let loop = endless.nextLoop() else { continue }
-            flights.append(("engine seed \(seed)", loop.route))
-        }
+        // GULLFIRE_SMOOTH_DIRS: colon-separated package folders (default Chicago). With more than one, names start with the folder name.
+        let dirs = ProcessInfo.processInfo.environment["GULLFIRE_SMOOTH_DIRS"].map {
+            $0.split(separator: ":").map { URL(fileURLWithPath: String($0), isDirectory: true) }
+        } ?? [PackageTests.chicago]
 
         var results: [(name: String, route: Route, report: Smoothness.Report)] = []
-        for f in flights {
-            results.append((f.name, f.route, Smoothness.fly(name: f.name, route: f.route, city: city, seconds: seconds)))
+        for dir in dirs {
+            let city = try CityPackage.open(directory: dir)
+            let routes = dir.appendingPathComponent("routes", isDirectory: true)
+            let tag = dirs.count > 1 ? dir.lastPathComponent + " " : ""
+            var flights: [(name: String, route: Route)] = []
+            flights.append((tag + "scenic", try Route.load(routes.appendingPathComponent("scenic.json"))))
+            flights.append((tag + "river", try Route.load(routes.appendingPathComponent("river.json"))))
+            for n in 1...6 where FileManager.default.fileExists(atPath: routes.appendingPathComponent("street-\(n).json").path) {
+                flights.append((tag + "street-\(n)", try Route.load(routes.appendingPathComponent("street-\(n).json")).preparedIfStreet(obstacles: city)))
+            }
+            for seed in 1...6 {
+                var endless = try #require(EndlessFlight(city: city, seed: UInt64(seed)))
+                guard let loop = endless.nextLoop() else { continue }
+                flights.append((tag + "engine seed \(seed)", loop.route))
+            }
+            for f in flights {
+                results.append((f.name, f.route, Smoothness.fly(name: f.name, route: f.route, city: city, seconds: seconds)))
+            }
         }
 
         func f2(_ x: Double) -> String { String(format: "%.2f", x) }
@@ -399,6 +405,35 @@ struct SmoothnessTests {
         if let want = ProcessInfo.processInfo.environment["GULLFIRE_SMOOTH_DUMP"], !want.isEmpty {
             for (name, route, r) in results where want.lowercased() == "all" || want.lowercased() == name.lowercased() {
                 for line in Smoothness.dumpLines(name: name, route: route, report: r) { print(line) }
+            }
+        }
+
+        // GULLFIRE_SMOOTH_ROLL=<route name or all>: the worst roll-rate moments on that route, at least 5 s apart (ROLL lines:
+        // time, roll rate, bank, route index of the route's waypoints, position, speed).
+        if let want = ProcessInfo.processInfo.environment["GULLFIRE_SMOOTH_ROLL"], !want.isEmpty {
+            for (name, route, r) in results where want.lowercased() == "all" || name.lowercased().hasSuffix(want.lowercased()) {
+                var rates: [(i: Int, rate: Double)] = []
+                for i in 1..<max(1, r.samples.count) {
+                    rates.append((i, abs(r.samples[i].bankDeg - r.samples[i - 1].bankDeg) / Smoothness.sampleInterval))
+                }
+                var picked: [Int] = []
+                for x in rates.sorted(by: { $0.rate > $1.rate }) where picked.count < 8 {
+                    if picked.allSatisfy({ abs(r.samples[$0].t - r.samples[x.i].t) >= 5 }) { picked.append(x.i) }
+                }
+                // Where the fast-rolling samples (over 25 deg/s) fall: route index bucket of 20, count of samples, first east/north.
+                var buckets: [Int: (n: Int, e: Double, nn: Double)] = [:]
+                for x in rates where x.rate > 25 {
+                    let sm = r.samples[x.i]
+                    let b = sm.routeIndex / 20
+                    if let cur = buckets[b] { buckets[b] = (cur.n + 1, cur.e, cur.nn) } else { buckets[b] = (1, sm.east, sm.north) }
+                }
+                for (b, v) in buckets.sorted(by: { $0.value.n > $1.value.n }).prefix(8) {
+                    print("ROLLZONE \(name) index \(b * 20)...\(b * 20 + 19)/\(route.count): \(v.n) samples over 25 deg/s, near east=\(f1(v.e)) north=\(f1(v.nn))")
+                }
+                for i in picked {
+                    let sm = r.samples[i]
+                    print("ROLL \(name) t=\(f1(sm.t)) rate=\(f1(abs(sm.bankDeg - r.samples[i - 1].bankDeg) / Smoothness.sampleInterval)) bank=\(f1(sm.bankDeg)) index \(sm.routeIndex)/\(route.count) east=\(f1(sm.east)) north=\(f1(sm.north)) speed=\(f1(sm.speed)) avoid=\(sm.avoidance) boundary=\(sm.boundary)")
+                }
             }
         }
 

@@ -26,7 +26,7 @@ struct KeyLegendView: View {
     /// The rows, sized to their content. Tall enough for them, this is the whole legend.
     private var rows: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(KeyLegend.groups(glider: model.hasGlider), id: \.title) { group in
+            ForEach(KeyLegend.groups(glider: model.hasGlider, chooseMap: model.catalog.count >= 2), id: \.title) { group in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(group.title).opacity(0.7)
                     ForEach(group.entries, id: \.key) { entry in

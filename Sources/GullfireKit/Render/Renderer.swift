@@ -158,6 +158,25 @@ public final class Renderer {
     /// Tiles whose nearest point is farther than this from the eye (metres) are not drawn: a draw distance, so a very large package
     /// costs what the nearby part costs. Nil draws every tile in view. Tiled packages only.
     public var drawDistance: Float? = nil
+    /// Option under test (not shipped on): a budget of line segments in view. When set with a draw distance, the distance in use
+    /// shrinks from `drawDistance` (the most) in dense areas, toward about this many segments, and recovers in sparse ones.
+    /// It moves a little each frame (about 1.5 s to settle) and not at all within 8% of the wanted value, so the fade edge does not pump.
+    public var segmentBudget: Int? = nil
+    private var activeDistance: Float? = nil
+    public var activeDistanceInUse: Float? { activeDistance ?? drawDistance }
+    private func updateActiveDistance() {
+        guard let budget = segmentBudget, let cap = drawDistance else { activeDistance = drawDistance; return }
+        let current = activeDistance ?? cap
+        guard lastSegmentsDrawn > 0 else { activeDistance = current; return }
+        // Segments in view grow about with the area, so with the square of the distance.
+        let wanted = min(cap, max(2000, current * (Float(budget) / Float(lastSegmentsDrawn)).squareRoot()))
+        activeDistance = abs(wanted - current) / current > 0.08 ? current + (wanted - current) * 0.012 : current
+    }
+    /// An offscreen frame waits for the GPU by default (stills). False lets frames queue up to the in-flight limit, as a window's do.
+    #if DEBUG
+    private static let skipPassName = ProcessInfo.processInfo.environment["GULLFIRE_SKIP_PASS"]
+    #endif
+    public var waitsForGPU = true
     /// Statistics for the last frame. Without a tile index, `lastTilesTotal` and `lastTilesDrawn` are 0.
     public private(set) var lastTilesDrawn = 0
     public private(set) var lastTilesTotal = 0
@@ -401,6 +420,7 @@ public final class Renderer {
         nextSlot = (nextSlot + 1) % slots.count
         // The token just granted means the GPU has finished the frame that used this slot.
         slot.allocator.reset()
+        updateActiveDistance()
 
         let vp = camera.viewProjection(aspect: Float(width) / Float(height))
         let viewport = SIMD2(Float(width), Float(height))
@@ -415,7 +435,7 @@ public final class Renderer {
                 colour = SIMD4(base * style.intensity(for: group), 1)
             }
             buffer.contents().storeBytes(of: Uniforms(vp: vp, viewport: viewport, widthPx: widthPx,
-                                                      bias: 0.002, color: colour, fadeDist: 600, cutoff: drawDistance ?? 0, eye: camera.eye),
+                                                      bias: 0.002, color: colour, fadeDist: 600, cutoff: activeDistance ?? drawDistance ?? 0, eye: camera.eye),
                                          as: Uniforms.self)
         }
 
@@ -476,7 +496,14 @@ public final class Renderer {
         }
         var calls = 0
         let tiled = tiles != nil
-        if drawHidden {
+        #if DEBUG
+        // Capture build only: GULLFIRE_SKIP_PASS=solids|lines leaves that pass out, to time the other (a cost split, not a feature).
+        let skipPass = Self.skipPassName
+        let skipSolids = skipPass == "solids", skipLines = skipPass == "lines"
+        #else
+        let skipSolids = false, skipLines = false
+        #endif
+        if drawHidden && !skipSolids {
             encoder.setRenderPipelineState(solidPipeline)
             encoder.setDepthStencilState(depthWrite)
             encoder.setCullMode(.none)
@@ -499,7 +526,7 @@ public final class Renderer {
         }
         encoder.setRenderPipelineState(linePipeline)
         encoder.setDepthStencilState(depthRead)
-        for group in LineGroup.allCases {
+        for group in LineGroup.allCases where !skipLines {
             let range = city.manifest.lineGroups[group.rawValue]
             if tiled {
                 // Instance IDs are relative to the group's buffer offset, so `baseInstance` is the run's
@@ -534,7 +561,7 @@ public final class Renderer {
         lastDrawCalls = calls
         lastEncodeMs = (CACurrentMediaTime() - encodeStart) * 1000
 
-        let completion: DispatchSemaphore? = drawable == nil ? DispatchSemaphore(value: 0) : nil
+        let completion: DispatchSemaphore? = (drawable == nil && waitsForGPU) ? DispatchSemaphore(value: 0) : nil
         let stats = self.stats, inflight = self.inflight
         let options = MTL4CommitOptions()
         options.addFeedbackHandler { feedback in
@@ -550,6 +577,7 @@ public final class Renderer {
             drawable.present()
             return previous.seconds
         }
+        if drawable == nil, !waitsForGPU { return previous.seconds }
         completion?.wait()
         let result = stats.read()
         if let error = result.error { throw RenderError.gpu(error) }
@@ -574,7 +602,7 @@ public final class Renderer {
             let lo = SIMD3<Float>(Float(e.min[0]), Float(e.min[2]), -Float(e.max[1]))
             let hi = SIMD3<Float>(Float(e.max[0]), Float(e.max[2]), -Float(e.min[1]))
             guard frustum.intersects(min: lo, max: hi) else { continue }
-            if let limit = drawDistance, LevelOfDetail.distance(from: eye, toBoxMin: lo, max: hi) > limit { continue }
+            if let limit = activeDistance ?? drawDistance, LevelOfDetail.distance(from: eye, toBoxMin: lo, max: hi) > limit { continue }
             visible += 1
             if drawHidden, e.solidCount > 0 {
                 Renderer.appendRun(&solidRuns, first: e.solidFirst, count: e.solidCount)

@@ -5,6 +5,14 @@ import MetalKit
 import QuartzCore
 import SwiftUI
 
+/// The package's street graph and its index, as the background load leaves them. `.none`: the package has no streets.json.
+enum StreetLoad: Sendable {
+    case notLoaded
+    case loading
+    case ready(StreetGraph, StreetIndex)
+    case none
+}
+
 /// Drives the flight view: one frame per display refresh. Each frame it reads the pilot's input,
 /// advances the simulation, follows the aircraft with the chase camera, and draws. It runs on the
 /// main actor, as the window does.
@@ -53,12 +61,12 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     private var entryPending = false
     private var entryClock: Double?
     /// Pick mode (I): the street under the pointer is flown on a click. `lastCamera` is the last frame's camera, which the
-    /// pick ray uses. `streetGraph` is loaded the first time it is needed. `pickTarget` is the picked street and its label,
+    /// pick ray uses. `streetState` is the package's street graph and its index, loaded on a background task when the map
+    /// opens (startStreetLoad). `pickTarget` is the picked street and its label,
     /// for the JOINING / ON line; it is cleared at the first swap to a new loop. `pickBuilding` is true while the first loop
     /// of a pick is built off the main thread.
     private var lastCamera = Camera(eye: SIMD3(0, 100, 0), target: SIMD3(0, 0, -1))
-    private var streetGraph: StreetGraph?
-    private var streetGraphLoaded = false
+    private var streetState: StreetLoad = .notLoaded
     private var pickTarget: (stretch: StreetStretch, label: String)?
     private var pickBuilding = false
     /// Pick-mode street overlays (updatePickOverlays). `pickAvailable` is the nearby streets' segments at 4 m, rebuilt when
@@ -92,11 +100,55 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     /// The flight window, set when the view joins it, so the launch announcement goes to this window and not to whatever is key.
     weak var window: NSWindow?
 
+    /// Capture builds only: GULLFIRE_OFFSCREEN=1 draws the real renderer into an offscreen texture on a frame clock of 1/60 s per frame, with no
+    /// drawable, so an occluded window or a sleeping display cannot throttle a memory run. Always false in the shipped app.
+    static var offscreenRun: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["GULLFIRE_OFFSCREEN"] == "1"
+        #else
+        false
+        #endif
+    }
+
+    #if DEBUG
+    private var offscreenStarted = false
+    private var offscreenBase: Double?
+    private var offscreenFrames = 0
+    private var offscreenActivity: NSObjectProtocol?
+    /// Starts the frame thread for the offscreen run and keeps App Nap and idle sleep off for as long as the app runs.
+    func startOffscreenRun(view: MTKView) {
+        guard Self.offscreenRun, !offscreenStarted else { return }
+        offscreenStarted = true
+        offscreenActivity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated, .idleSystemSleepDisabled], reason: "Offscreen memory run")
+        // GULLFIRE_OFFSCREEN_PIPELINED=1: frames queue up to the in-flight limit, as a window's do, instead of waiting for the GPU.
+        if ProcessInfo.processInfo.environment["GULLFIRE_OFFSCREEN_PIPELINED"] == "1" { renderer.waitsForGPU = false }
+        // A timer on the main run loop was throttled to about a tenth of its rate once the window was covered, App Nap or no.
+        // So a plain thread asks the main queue for each frame and waits for it: no timer, and the pace is the GPU's.
+        // The frame clock (see drawFrame) is 1/60 s per frame, so how fast the frames come changes nothing in the run.
+        let thread = Thread { [weak self, weak view] in
+            while true {
+                let done = DispatchSemaphore(value: 0)
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated { if let self, let view { self.drawFrame(view) } }
+                    done.signal()
+                }
+                done.wait()
+                if self == nil || view == nil { return }
+            }
+        }
+        thread.qualityOfService = .userInitiated
+        thread.name = "Gullfire offscreen frames"
+        thread.start()
+        model.timing.checkpoint("offscreen run started")
+    }
+    #endif
+
     init(model: AppModel, city: CityPackage, view: MTKView, input: FlightInput, width: Int, height: Int) throws {
         self.model = model
         self.city = city
         self.input = input
-        renderer = try Renderer(city: city, width: width, height: height, offscreen: false,
+        renderer = try Renderer(city: city, width: width, height: height, offscreen: Self.offscreenRun,
                                 checkpoint: { name in MainActor.assumeIsolated { model.timing.checkpoint(name) } })
         // The wireframe glider: drawn and followed closely when the model file is there; without it the app
         // is as before (nothing drawn, the distant camera).
@@ -107,15 +159,17 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         }
         // Test hook for the tiles runs: GULLFIRE_NO_CULL=1 draws every tile.
         if ProcessInfo.processInfo.environment["GULLFIRE_NO_CULL"] == "1" { renderer.culling = false }
-        // A draw distance for a very large package: 5 km when the package is over 200 km², else none.
+        // A draw distance for a large or dense package (DrawDistancePolicy: over 200 km² or over 1.5 M line segments).
         // GULLFIRE_DRAW_DISTANCE=metres overrides it (0 turns it off).
         let extent = city.manifest.extentM
         let areaKm2 = (extent.maxEast - extent.minEast) * (extent.maxNorth - extent.minNorth) / 1e6
-        if let text = ProcessInfo.processInfo.environment["GULLFIRE_DRAW_DISTANCE"], let metres = Float(text) {
-            renderer.drawDistance = metres > 0 ? metres : nil
-        } else if areaKm2 > 200 {
-            renderer.drawDistance = 5000
-        }
+        renderer.drawDistance = DrawDistancePolicy.distance(
+            areaKm2: areaKm2, segments: city.manifest.segmentCount,
+            override: ProcessInfo.processInfo.environment["GULLFIRE_DRAW_DISTANCE"].flatMap(Float.init))
+        #if DEBUG
+        // Capture build: GULLFIRE_SEGMENT_BUDGET=thousands of segments in view (an option under test).
+        renderer.segmentBudget = ProcessInfo.processInfo.environment["GULLFIRE_SEGMENT_BUDGET"].flatMap(Int.init).map { $0 * 1000 }
+        #endif
         // Test hook for level of detail: GULLFIRE_LOD=d1,d2[,s] in metres, with the
         // optional minimum screen fraction s. Off by default.
         if let text = ProcessInfo.processInfo.environment["GULLFIRE_LOD"] {
@@ -166,6 +220,7 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         }
         simulation = Simulation(start: start, tuning: flightTuning)
         super.init()
+        startStreetLoad()
     }
 
     /// Level off (R): bank and pitch to zero at once.
@@ -181,7 +236,9 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     }
 
     /// J turning the mouse on: hand flying, so leave cruise (the autopilot ignores the mouse).
+    /// Endless flight is left first: the mouse and endless flight never run together (`ModeExclusion`).
     func handFly() {
+        if ModeExclusion.leavesEndless(mouseTurningOn: true, endlessOn: endless != nil) { endlessOff() }
         if pilot.mode == .auto { toggleCruise() }
     }
 
@@ -202,19 +259,41 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
             ?? UInt64.random(in: 1...999_999)
     }
 
+    #if DEBUG
+    /// Capture builds only (GULLFIRE_AUTOSTART_ENDLESS): presses U once the street graph is ready, asking again every 2 s, up to
+    /// `tries` times, until endless flight is on. Never in the shipped app.
+    func autostartEndless(tries: Int = 30) {
+        guard tries > 0, endless == nil else { return }
+        toggleEndless()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in self?.autostartEndless(tries: tries - 1) }
+    }
+    #endif
+
     /// U: endless flight on or off. On, the aircraft flies loops of the package's streets, each built in the background
     /// while the last one is flown. Off, it goes back to the package's routes.
     func toggleEndless() {
         if endless != nil { endlessOff(); return }
-        guard let flight = EndlessFlight(city: city, seed: Self.newEndlessSeed()) else {
+        if let text = streetNotice(missing: "ENDLESS: NO STREET GRAPH IN THIS PACKAGE") {
+            showNotice(text)
+            return
+        }
+        guard let flight = EndlessFlight(city: city, seed: Self.newEndlessSeed(), graph: loadStreetGraph()) else {
             showNotice("ENDLESS: NO STREET GRAPH IN THIS PACKAGE")
             return
         }
+        // Endless flight and the mouse never run together: the mouse is given back first.
+        if ModeExclusion.givesBackMouse(endlessTurningOn: true, mouseOn: input.mouseOn) { releaseMouseForEndless() }
         // Endless starts from cruise, so the hand-back can climb out of a street first.
         if pilot.mode == .manual { toggleCruise() }
         endless = flight
         endlessGeneration += 1
         buildLoop(from: flight, after: nil)
+    }
+
+    /// Gives the mouse back to the pointer. The view does it when there is one; the input's flag goes off in every case.
+    private func releaseMouseForEndless() {
+        mouseView?.releaseMouse()
+        if input.mouseOn { input.mouseOn = false; model.mouseFlight = false }
     }
 
     /// U again, or C: endless off. The aircraft returns to the package's routes, climbing out of a street first if it is in one.
@@ -328,21 +407,49 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         return "PICK: NO STREET HERE / CLICK ONE / I OR ESC TO CANCEL"
     }
 
-    /// The package's street graph, loaded the first time it is needed. Nil when the package has none.
+    /// The street graph, once the background load has finished. Nil while it loads and when the package has none; never waits.
     private func loadStreetGraph() -> StreetGraph? {
-        if !streetGraphLoaded {
-            streetGraphLoaded = true
-            streetGraph = try? StreetGraph.load(from: city.directory)
+        if case .ready(let graph, _) = streetState { return graph }
+        return nil
+    }
+
+    /// The street index, once the background load has finished. Nil while it loads and when the package has none.
+    private var streetIndex: StreetIndex? {
+        if case .ready(_, let index) = streetState { return index }
+        return nil
+    }
+
+    /// Starts loading the package's street graph and building its index on a utility task, once. The result is handed back
+    /// to the main actor, so no frame waits on it.
+    private func startStreetLoad() {
+        guard case .notLoaded = streetState else { return }
+        streetState = .loading
+        let directory = city.directory
+        Task { [weak self] in
+            let made = await Task.detached(priority: .utility) { () -> StreetLoad in
+                guard let graph = try? StreetGraph.load(from: directory) else { return .none }
+                return .ready(graph, StreetIndex(graph: graph))
+            }.value
+            self?.streetState = made
         }
-        return streetGraph
+    }
+
+    /// The notice for a street key (U or I) while the graph is not ready: nil when it is ready, the loading line while it loads,
+    /// else `missing` (the package has no street graph).
+    private func streetNotice(missing: String) -> String? {
+        switch streetState {
+        case .ready: return nil
+        case .notLoaded, .loading: return "STREETS: LOADING, TRY AGAIN IN A MOMENT"
+        case .none: return missing
+        }
     }
 
     /// I: pick mode on or off. On, the pointer is free and a click flies the street under it. Mouse flight is given up first,
-    /// since the two never run together. Without a street graph it says so and does nothing else.
+    /// since the two never run together. While the streets load, or without a street graph, it says so and does nothing else.
     func togglePick() {
         if model.pickMode { cancelPick(); return }
-        guard loadStreetGraph() != nil else {
-            showNotice("PICK: NO STREET GRAPH IN THIS PACKAGE")
+        if let text = streetNotice(missing: "PICK: NO STREET GRAPH IN THIS PACKAGE") {
+            showNotice(text)
             return
         }
         if input.mouseOn { mouseView?.releaseMouse() }
@@ -370,7 +477,8 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     func pickHover(ndc: SIMD2<Double>, aspect: Double) {
         guard model.pickMode, !pickBuilding, let graph = loadStreetGraph() else { return }
         guard let pick = StreetPicker.pick(camera: lastCamera, ndc: ndc, aspect: aspect,
-                                           aircraftHeading: simulation.current.heading, graph: graph, obstacles: city) else {
+                                           aircraftHeading: simulation.current.heading, graph: graph, obstacles: city,
+                                           index: streetIndex) else {
             pickHoverIndex = nil
             pickHoverSegments = []
             model.pickLine = pickedLabel == nil ? "PICK: NO STREET HERE / CLICK ONE / I OR ESC TO CANCEL" : pickIdleLine
@@ -395,7 +503,12 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         }
         if pickAvailableCentre == nil || simd_distance(pickAvailableCentre ?? aircraft, aircraft) > 500 {
             pickAvailableCentre = aircraft
-            let indices = StreetOverlay.available(in: graph, near: aircraft, radius: 4000, maxSegments: 30_000)
+            let indices: [Int]
+            if let index = streetIndex {
+                indices = StreetOverlay.available(in: graph, near: aircraft, radius: 4000, maxSegments: 30_000, index: index)
+            } else {
+                indices = StreetOverlay.available(in: graph, near: aircraft, radius: 4000, maxSegments: 30_000)
+            }
             var segments: [Float] = []
             for index in indices { segments += StreetOverlay.segments(for: graph.stretches[index], height: 4) }
             pickAvailable = segments
@@ -417,14 +530,14 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         // The clicked street first, then the nearest others: a street that cannot start a loop falls through to the next.
         let picks = StreetPicker.candidates(camera: lastCamera, ndc: ndc, aspect: aspect,
                                             aircraftHeading: simulation.current.heading, graph: graph, obstacles: city,
-                                            maxSnap: 1500, limit: 4)
+                                            maxSnap: 1500, limit: 4, index: streetIndex)
         guard !picks.isEmpty else {
             model.pickLine = "PICK: NO STREET HERE / CLICK ONE / I OR ESC TO CANCEL"
             return
         }
         let streets = picks.map { graph.stretches[$0.stretchIndex] }
         // The flight to build from: the running endless flight, or a new one with a fresh seed.
-        guard let base = endless ?? EndlessFlight(city: city, seed: Self.newEndlessSeed()) else {
+        guard let base = endless ?? EndlessFlight(city: city, seed: Self.newEndlessSeed(), graph: loadStreetGraph()) else {
             showNotice("PICK: NO STREET GRAPH IN THIS PACKAGE")
             cancelPick()
             return
@@ -616,7 +729,7 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     }
 
     nonisolated func draw(in view: MTKView) {
-        MainActor.assumeIsolated { self.drawFrame(view) }
+        MainActor.assumeIsolated { if !Self.offscreenRun { self.drawFrame(view) } }
     }
 
     /// Sets the drawable to the window's pixel size times the render scale, and resizes the renderer
@@ -642,7 +755,7 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
     #if DEBUG
     // MARK: - Debug script (Debug builds only)
     // GULLFIRE_SCRIPT="u@10,pick@60,space@120,quit@200" calls the same functions the keys call, at those seconds after the
-    // first frame (u, i, pick, space, c, t, v, quit), and GULLFIRE_SCRIPT_LOG=<file> gets a status line every 2 s. "pick"
+    // first frame (u, i, pick, space, c, t, v, m, mouseon, quit), and GULLFIRE_SCRIPT_LOG=<file> gets a status line every 2 s. "pick"
     // clicks the nearest street ahead by projecting it into the view and calling pickClick, so the real picker runs. It
     // synthesises no keyboard or mouse events.
     private var scriptItems: [(at: Double, cmd: String)]?
@@ -675,7 +788,10 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
             case "c": cycleRoute()
             case "t": stepHeight(10)
             case "v": stepHeight(-10)
+            case "mouseon":   // what J does, without the pointer: leave endless, hand fly, mouse flight on
+                handFly(); input.mouseOn = true; model.mouseFlight = true
             case "handfly": handFly()   // what J does before it takes the pointer (the pointer itself is not touched)
+            case "m": model.toggleMusic(reason: "script")   // what the M key does
             case "quit": NSApplication.shared.terminate(nil)
             default: debugScriptLog(t, "unknown command \(cmd)")
             }
@@ -684,11 +800,12 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
             scriptLastLog = t
             let s = simulation.current
             let h = model.hud
-            debugScriptLog(t, String(format: "mode=[%@] endless=[%@] pick=[%@] notice=[%@] pilot=%@ e=%.0f n=%.0f alt=%.0f m heading=%.0f nudges=%d proximity=%@ height=%+.0f target=%@",
+            debugScriptLog(t, String(format: "mode=[%@] endless=[%@] pick=[%@] notice=[%@] pilot=%@ e=%.0f n=%.0f alt=%.0f m heading=%.0f nudges=%d proximity=%@ height=%+.0f target=%@ mouse=%@",
                                      h.mode, h.endless, model.pickLine, model.notice ?? "", pilot.mode == .auto ? "auto" : "manual",
                                      s.east, s.north, s.altitude, s.heading * 180 / .pi, simulation.nudges,
                                      simulation.proximityWarning ? "yes" : "no", heightOffset,
-                                     manualAltTarget.map { String(format: "%.0f", $0) } ?? "-"))
+                                     manualAltTarget.map { String(format: "%.0f", $0) } ?? "-",
+                                     input.mouseOn ? "on" : "off"))
         }
     }
 
@@ -736,16 +853,35 @@ final class FlightRenderer: NSObject, MTKViewDelegate {
         defer { model.timing.recordDraw(ms: (CACurrentMediaTime() - entered) * 1000) }
         applyDrawableSize(view)
         let drawableStart = CACurrentMediaTime()   // measurement only
-        guard let drawable = view.currentDrawable else { return }
-        let drawableMs = (CACurrentMediaTime() - drawableStart) * 1000
-        // The layer can still hand out a drawable of the previous size for a frame after a resize.
-        // Encoding a pass with mismatched sizes is invalid (Metal validation: "texture and
-        // resolveTexture size mismatch"), so skip that frame.
-        guard drawable.texture.width == renderer.width && drawable.texture.height == renderer.height else { return }
+        var drawable: CAMetalDrawable?
+        var drawableMs = 0.0
+        if !Self.offscreenRun {
+            drawable = view.currentDrawable
+            guard let drawable else { return }
+            drawableMs = (CACurrentMediaTime() - drawableStart) * 1000
+            // The layer can still hand out a drawable of the previous size for a frame after a resize.
+            // Encoding a pass with mismatched sizes is invalid (Metal validation: "texture and
+            // resolveTexture size mismatch"), so skip that frame.
+            guard drawable.texture.width == renderer.width && drawable.texture.height == renderer.height else { return }
+        }
         model.timing.recordWaits(drawableMs: drawableMs, inflightMs: renderer.lastInflightWaitMs,
                                  focused: (view.window?.isKeyWindow ?? false),
                                  visible: (view.window?.occlusionState.contains(.visible) ?? true))
-        let now = CACurrentMediaTime()
+        var now = CACurrentMediaTime()
+        #if DEBUG
+        if Self.offscreenRun {
+            // The frame clock of an offscreen run: exactly 1/60 s per frame, so the flight covers the same ground whatever else
+            // the Mac is doing. The run ends after GULLFIRE_SECONDS of this clock.
+            if offscreenBase == nil { offscreenBase = now }
+            offscreenFrames += 1
+            now = offscreenBase! + Double(offscreenFrames) / 60
+            if let limit = ProcessInfo.processInfo.environment["GULLFIRE_SECONDS"].flatMap(Double.init),
+               Double(offscreenFrames) / 60 >= limit {
+                model.writeLog(runSeconds: limit)
+                NSApplication.shared.terminate(nil)
+            }
+        }
+        #endif
         model.timing.recordFrame(at: now)
         if model.notice != nil, now >= model.noticeUntil { model.notice = nil }
         #if DEBUG
@@ -960,6 +1096,14 @@ struct MetalView: NSViewRepresentable {
                 if let seconds = ProcessInfo.processInfo.environment["GULLFIRE_CYCLE_AT"].flatMap(Double.init) {
                     DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { flight.cycleRoute() }
                 }
+                // Memory-run hook, capture builds only (Debug, or Release built with the DEBUG condition; never the shipped app):
+                // GULLFIRE_AUTOSTART_ENDLESS=<seconds> presses U once after that many seconds, so a run needs no synthetic input.
+                // The street graph loads in the background first, so it asks again every 2 s, up to 30 times, until endless is on.
+                if let seconds = ProcessInfo.processInfo.environment["GULLFIRE_AUTOSTART_ENDLESS"].flatMap(Double.init) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { flight.autostartEndless() }
+                }
+                // GULLFIRE_OFFSCREEN=1: draw offscreen on a timer (see `FlightRenderer.offscreenRun`).
+                flight.startOffscreenRun(view: view)
                 #endif
             } catch {
                 model.problem = "Could not start the renderer: \(error)"

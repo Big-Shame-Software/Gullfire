@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "note": "The one list that Tools/build_city.sh and the app's Settings > Maps both read. Figures are from the one 48 GB Mac that has built these maps (Spikes/NOTES.md); minRamGB and freeDiskGB add a margin and are estimates, not measurements. The build is the heavy part; flying is light on any Mac.",
+  "measuredOn": "48 GB Mac mini (M4 Pro)",
+  "overtureRelease": "2026-10-21.0",
+  "recipes": [
+    {
+      "id": "chicago",
+      "folder": "Chicago",
+      "displayName": "Chicago — Loop, River North & Streeterville",
+      "areaKm2": 45,
+      "downloadMB": 130,
+      "diskGB": 0.3,
+      "freeDiskGB": 2,
+      "minRamGB": 8,
+      "buildPeakGB": 1,
+      "approxMinutes": 3,
+      "outOfCore": false
+    },
+    {
+      "id": "chicagowide",
+      "folder": "ChicagoWide",
+      "displayName": "Chicago — Downtown & Surrounding Neighborhoods",
+      "areaKm2": 85,
+      "downloadMB": 125,
+      "diskGB": 0.5,
+      "freeDiskGB": 3,
+      "minRamGB": 8,
+      "buildPeakGB": 1,
+      "approxMinutes": 5,
+      "outOfCore": false
+    },
+    {
+      "id": "chicagocity",
+      "folder": "ChicagoCity",
+      "displayName": "Chicago — Citywide & Inner Suburbs",
+      "areaKm2": 1499,
+      "downloadMB": 1400,
+      "diskGB": 4.4,
+      "freeDiskGB": 12,
+      "minRamGB": 16,
+      "buildPeakGB": 5.5,
+      "approxMinutes": 15,
+      "outOfCore": true
+    },
+    {
+      "id": "cookcounty",
+      "folder": "CookCounty",
+      "displayName": "Cook County & Surrounding Area",
+      "areaKm2": 4777,
+      "downloadMB": 2600,
+      "diskGB": 9.5,
+      "freeDiskGB": 24,
+      "minRamGB": 16,
+      "buildPeakGB": 6.5,
+      "approxMinutes": 40,
+      "outOfCore": true
+    }
+  ]
+}

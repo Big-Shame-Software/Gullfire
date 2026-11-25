@@ -43,6 +43,8 @@ targets:
       - App
       - path: Resources/Music
         buildPhase: resources
+      - path: Resources/Recipes
+        buildPhase: resources
     dependencies:
       - target: GullfireKit
     settings:
@@ -53,8 +55,8 @@ targets:
         INFOPLIST_KEY_CFBundleIconName: AppIcon
         INFOPLIST_KEY_NSHumanReadableCopyright: "N©! Big Shame Software 2026. No rights reserved."
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.simulation-games
-        MARKETING_VERSION: "1.2.1"
-        CURRENT_PROJECT_VERSION: "5"
+        MARKETING_VERSION: "1.3.0"
+        CURRENT_PROJECT_VERSION: "6"
 schemes:
   Gullfire:
     build:

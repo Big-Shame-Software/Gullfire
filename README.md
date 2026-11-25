@@ -8,7 +8,7 @@
 
 Gullfire is a native macOS app that flies a simulated aircraft over a real city, drawn as green hidden-line wireframes on black.
 
-In 1981 a movie imagined what a navigation computer would show a pilot coming in over a city at night: green lines on black, every building a box. We liked it enough to build it with real map data. Gullfire 1.2.1 is source only: there is no download, so you build it yourself. It needs macOS 27 on Apple silicon, Xcode 27, XcodeGen and uv. It does not do anything useful. I'm serious. It flies over Chicago, very carefully.
+In 1981 a movie imagined what a navigation computer would show a pilot coming in over a city at night: green lines on black, every building a box. We liked it enough to build it with real map data. Gullfire 1.3.0 is source only: there is no download, so you build it yourself. It needs macOS 27 on Apple silicon, Xcode 27, XcodeGen and uv. It does not do anything useful. I'm serious. It flies over Chicago and, if you build the bigger maps, much of Cook County, very carefully.
 
 <p align="center"><img src=".github/screenshots/c6-flight-scenic.png" alt="Gullfire flying the Scenic route over the Chicago map: tall towers drawn as green lines on black, with the key list at the bottom right." width="720"></p>
 
@@ -25,8 +25,7 @@ In 1981 a movie imagined what a navigation computer would show a pilot coming in
 
 ## What it doesn't do yet
 
-- Chicago is the only city in this release. You build its package yourself (see Getting a city).
-- There is no map picker. Gullfire opens the one city it finds.
+- The only maps are four of Chicago and its surroundings. You build each one yourself (see Getting a city and Bigger maps).
 - The glider is not included. Add your own model file to show it (see Adding a glider).
 - The game controller is supported, but it has not been tested on real hardware.
 - The River route can drop to about 33 frames a second for a few seconds during a long full-screen flight. The cause is not known yet.
@@ -56,9 +55,10 @@ Start the app and it flies the Scenic route on autopilot. The list of routes app
 | Space | Cruise or manual (manual to cruise blends over 3 seconds) |
 | R | Level off |
 | T / V | Height up / down |
-| J | Mouse flight on or off |
+| J | Mouse flight on or off (taking the mouse leaves endless flight) |
+| ⌘O | Choose Map…: back to the map picker (also Flight ▸ Choose Map…). Works in full screen. Listed only with two or more maps installed |
 | I | Pick a street to fly, then carry on as endless flight (alpha). I or Esc cancels |
-| U | Endless flight on or off |
+| U | Endless flight on or off (turning it on gives the mouse back) |
 | C | Next route, and show the list of routes at the bottom of the window |
 | B | Cycle the colour scheme (Default, Brand, Lime) |
 | P | Show or hide the performance overlay |
@@ -96,7 +96,7 @@ I lets you pick a street. The pointer is free. Move it over the flight view and 
 
 **Gullfire > About Gullfire** opens the About window. It shows the version and the build number, and the map credit once a city is loaded. It follows the light or dark appearance of your Mac.
 
-<p align="center"><img src=".github/screenshots/c6-about-light.png" alt="The About window in light appearance: the publisher mark, the Gullfire icon, Version 1.2.1 (5), the tagline, the shelf line, the OpenStreetMap and Overture credit, the N©! line and the public-domain line." width="300"> <img src=".github/screenshots/c6-about-dark.png" alt="The About window in dark appearance, with the same lines." width="300"></p>
+<p align="center"><img src=".github/screenshots/c6-about-light.png" alt="The About window in light appearance: the publisher mark, the Gullfire icon, Version 1.3.0 (6), the tagline, the shelf line, the OpenStreetMap and Overture credit, the N©! line and the public-domain line." width="300"> <img src=".github/screenshots/c6-about-dark.png" alt="The About window in dark appearance, with the same lines." width="300"></p>
 
 ### Getting a city
 
@@ -129,6 +129,31 @@ cp Cities/Chicago/routes/scenic.json Cities/Chicago/routes/river.json "$HOME/Lib
 The first two lines rewrite the two route files in your build folder, and the last copies them to where Gullfire looks. The other routes and the map are not touched.
 
 <p align="center"><img src=".github/screenshots/c6-empty-light.png" alt="The empty state in light appearance: the app icon, the message 'No city package found', and the command Tools/build_chicago.sh." width="420"> <img src=".github/screenshots/c6-empty-dark.png" alt="The empty state in dark appearance, with the same message and command." width="420"></p>
+
+### Bigger maps
+
+Chicago is the small one. Three bigger maps are built the same way, by one command each, and Gullfire lists whatever you have built in a picker that opens at launch (and from Flight ▸ Choose Map…, or ⌘O). No map ships with the app. Each is a recipe you run once. Use the id in the first column:
+
+```bash
+Tools/build_city.sh chicagowide
+```
+
+| Id | Map | Area | Download | Disk | Memory to build | Build time (estimate) |
+|---|---|---|---|---|---|---|
+| `chicago` | Loop, River North & Streeterville | 45 km² | 130 MB | 0.3 GB | 8 GB | about 3 minutes (50 seconds measured) |
+| `chicagowide` | Downtown & Surrounding Neighborhoods | 85 km² | 125 MB | 0.5 GB | 8 GB | about 5 minutes (1 minute 22 seconds measured, download included) |
+| `chicagocity` | Citywide & Inner Suburbs | 1,499 km² | 1.4 GB | 4.4 GB | 16 GB | about 15 minutes (6 minutes 36 seconds measured, data already downloaded) |
+| `cookcounty` | Cook County & Surrounding Area | 4,777 km² | 2.6 GB | 9.5 GB | 16 GB | about 40 minutes (22 minutes 47 seconds measured, data already downloaded) |
+
+<p align="center"><img src=".github/screenshots/c7-picker-light.png" alt="The map picker in light appearance, listing four maps with their areas and sizes on disk, and a diagram showing Chicago inside the larger maps." width="420"> <img src=".github/screenshots/c7-picker-dark.png" alt="The map picker in dark appearance, with the same four maps and the same diagram." width="420"></p>
+
+The memory and disk columns are estimates with a margin. The times were measured on one Mac, so a Mac with fewer cores will take longer, and the downloads depend on your connection.  The longest step on the big maps is marking which streets can start a loop, which uses every core, so it takes longer on a Mac with fewer. The build downloads Overture release 2026-10-21.0, the one these maps were tested on. Overture keeps only its last few releases, so it will drop that one in time. Then the script stops before downloading and says so; `--overture-release latest` builds from the newest release, which we have not tested. The Cook County box is its bounding rectangle, so it takes in parts of the neighbouring counties. Citywide includes inner suburbs such as Oak Park and Cicero; Evanston is just outside it.
+
+<p align="center"><img src=".github/screenshots/c7-flight-cook-dark.png" alt="Gullfire flying the street-1 route over the Cook County map: wireframe suburban houses in green lines on black, the river in blue, a dense city on the horizon, and the key and route lists on the right and bottom." width="720"></p>
+
+**Only one Mac has built these.** Every figure above comes from one 48 GB, 14-core Mac. Before it downloads anything, the script checks this Mac's memory and free disk against the map's needs and stops, with nothing downloaded, if either is short; `--force` overrides it. Settings ▸ Maps lists what you have built and the sizes this Mac can build, with the command to copy. The app never downloads or builds anything.
+
+**Flying them.** The three biggest maps draw only what is within 5 km of the aircraft, with a fade at the edge, so a skyline more than 5 km away is not drawn. On that same Mac the windowed footprint peaked at 525 MB on Cook County and 754 MB on Citywide over an hour of endless flight (about 90 km flown); Citywide took about 58 frames a second in a short attended run. Slower Macs have not been tried.
 
 ### Street routes
 
